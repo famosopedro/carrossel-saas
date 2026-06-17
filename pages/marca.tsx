@@ -515,6 +515,11 @@ export default function MarcaPage() {
               ⏳ Analisando arquivo {analisandoIdx + 1}… Claude está extraindo nome, tema e fonte.
             </p>
           )}
+          {!analisando && erroAnalise && (
+            <p style={{ fontSize: 12, color: "#e55", marginBottom: 16 }}>
+              ⚠ {erroAnalise}
+            </p>
+          )}
 
           {perfilAtivoId == null ? (
             <p style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>Selecione uma identidade acima para editar.</p>

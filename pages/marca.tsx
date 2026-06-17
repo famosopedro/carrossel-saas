@@ -137,6 +137,7 @@ export default function MarcaPage() {
   const [novoNome, setNovoNome] = useState("");
   const [novoArquivo, setNovoArquivo] = useState<File | null>(null);
   const [analisando, setAnalisando] = useState(false);
+  const [erroAnalise, setErroAnalise] = useState<string | null>(null);
   const novoFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -171,6 +172,7 @@ export default function MarcaPage() {
 
     if (novoArquivo) {
       setAnalisando(true);
+      setErroAnalise(null);
       try {
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -179,15 +181,27 @@ export default function MarcaPage() {
           reader.readAsDataURL(novoArquivo);
         });
         const base64 = dataUrl.split(",")[1];
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 30000);
         const resp = await fetch(`${router.basePath}/api/analisar-marca`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ base64, mimeType: novoArquivo.type }),
+          signal: controller.signal,
         });
+        clearTimeout(timer);
         const json = await resp.json();
-        if (json.ok && json.config) extraConfig = json.config;
-      } catch (err) {
-        console.error("analisar-marca:", err);
+        if (json.ok && json.config) {
+          // filtra strings vazias pra não sobrescrever defaults
+          extraConfig = Object.fromEntries(
+            Object.entries(json.config).filter(([, v]) => v !== "" && v != null)
+          ) as Partial<BrandConfig>;
+        } else {
+          setErroAnalise(json.error || `Erro ${resp.status}`);
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setErroAnalise(msg.includes("abort") ? "Tempo esgotado (30s)" : msg);
       }
       setAnalisando(false);
     }
@@ -376,7 +390,7 @@ export default function MarcaPage() {
                       Claude vai ler o arquivo e pré-preencher nome, tema, fonte e URL da marca.
                     </p>
                   )}
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <button
                       onClick={criarPerfil}
                       disabled={analisando || !novoNome.trim()}
@@ -385,11 +399,16 @@ export default function MarcaPage() {
                       {analisando ? "Analisando..." : "Criar"}
                     </button>
                     <button
-                      onClick={() => { setCriandoNovo(false); setNovoNome(""); setNovoArquivo(null); }}
+                      onClick={() => { setCriandoNovo(false); setNovoNome(""); setNovoArquivo(null); setErroAnalise(null); }}
                       style={{ padding: "6px 10px", borderRadius: 6, fontSize: 12, cursor: "pointer", background: "transparent", color: MUTED, border: `1px solid ${LINE}`, fontFamily: "inherit" }}
                     >
                       Cancelar
                     </button>
+                    {erroAnalise && (
+                      <span style={{ fontSize: 11, color: "#e55", maxWidth: 200 }}>
+                        ⚠ {erroAnalise}
+                      </span>
+                    )}
                   </div>
                 </div>
               ) : (

@@ -91,15 +91,8 @@ export default function PromoRail() {
         {o.destaque && <div style={{ height: 3, background: ACCENT, flexShrink: 0 }} />}
 
         <div key={idx} className="promo-fade" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "26px 22px 28px" }}>
-          {/* topo: imagem + eyebrow + título + bullets */}
+          {/* topo: eyebrow + título + bullets */}
           <div>
-            {o.imagem && (
-              <img
-                src={o.imagem}
-                alt={o.eyebrow}
-                style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", marginBottom: 14, display: "block" }}
-              />
-            )}
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: MUTED, margin: "0 0 12px" }}>
               {o.eyebrow}
             </p>
@@ -116,8 +109,15 @@ export default function PromoRail() {
             </ul>
           </div>
 
-          {/* base: preço + CTA + assinatura */}
+          {/* base: imagem + preço + CTA + assinatura */}
           <div style={{ marginTop: 28 }}>
+            {o.imagem && (
+              <img
+                src={o.imagem}
+                alt={o.eyebrow}
+                style={{ width: "100%", borderRadius: 8, marginBottom: 16, display: "block", objectFit: "cover", maxHeight: 140 }}
+              />
+            )}
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", color: FG, lineHeight: 1 }}>{o.preco}</div>
               {o.precoNota && <div style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>{o.precoNota}</div>}

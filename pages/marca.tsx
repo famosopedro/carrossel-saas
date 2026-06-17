@@ -135,6 +135,9 @@ export default function MarcaPage() {
   const [perfilAtivoId, setPerfilAtivoIdState] = useState<string | null>(null);
   const [criandoNovo, setCriandoNovo] = useState(false);
   const [novoNome, setNovoNome] = useState("");
+  const [novoArquivo, setNovoArquivo] = useState<File | null>(null);
+  const [analisando, setAnalisando] = useState(false);
+  const novoFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const ps = getPerfis();
@@ -159,15 +162,41 @@ export default function MarcaPage() {
     carregarPerfil(id);
   }
 
-  function criarPerfil() {
+  async function criarPerfil() {
     const nome = novoNome.trim();
     if (!nome) return;
     const id = `perfil_${Date.now()}`;
-    const novo: BrandProfile = { id, nome, config: { ...DEFAULT_BRAND, nomeMarca: nome } };
+
+    let extraConfig: Partial<BrandConfig> = {};
+
+    if (novoArquivo) {
+      setAnalisando(true);
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(novoArquivo);
+        });
+        const base64 = dataUrl.split(",")[1];
+        const resp = await fetch("/api/analisar-marca", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64, mimeType: novoArquivo.type }),
+        });
+        const json = await resp.json();
+        if (json.ok && json.config) extraConfig = json.config;
+      } catch {}
+      setAnalisando(false);
+    }
+
+    const config: BrandConfig = { ...DEFAULT_BRAND, nomeMarca: nome, ...extraConfig };
+    const novo: BrandProfile = { id, nome: config.nomeMarca || nome, config };
     const ps = [...getPerfis(), novo];
     savePerfis(ps);
     setPerfis(ps);
     setNovoNome("");
+    setNovoArquivo(null);
     setCriandoNovo(false);
     switchPerfil(id);
   }
@@ -312,40 +341,54 @@ export default function MarcaPage() {
                 );
               })}
               {criandoNovo ? (
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input
-                    autoFocus
-                    value={novoNome}
-                    onChange={(e) => setNovoNome(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") criarPerfil();
-                      if (e.key === "Escape") { setCriandoNovo(false); setNovoNome(""); }
-                    }}
-                    placeholder="Nome da marca..."
-                    style={{
-                      padding: "6px 10px",
-                      border: `1px solid ${LINE}`,
-                      borderRadius: 6,
-                      background: CARD,
-                      color: FG,
-                      fontSize: 12,
-                      outline: "none",
-                      fontFamily: "inherit",
-                      width: 160,
-                    }}
-                  />
-                  <button
-                    onClick={criarPerfil}
-                    style={{ padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer", background: FG, color: BG, border: "none", fontFamily: "inherit" }}
-                  >
-                    Criar
-                  </button>
-                  <button
-                    onClick={() => { setCriandoNovo(false); setNovoNome(""); }}
-                    style={{ padding: "6px 10px", borderRadius: 6, fontSize: 12, cursor: "pointer", background: "transparent", color: MUTED, border: `1px solid ${LINE}`, fontFamily: "inherit" }}
-                  >
-                    ✕
-                  </button>
+                <div style={{ display: "flex", flexDirection: "column" as const, gap: 8, padding: "10px 14px", background: CARD, border: `1px solid ${LINE}`, borderRadius: 8 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <input
+                      autoFocus
+                      value={novoNome}
+                      onChange={(e) => setNovoNome(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") criarPerfil();
+                        if (e.key === "Escape") { setCriandoNovo(false); setNovoNome(""); setNovoArquivo(null); }
+                      }}
+                      placeholder="Nome da marca..."
+                      style={{ padding: "6px 10px", border: `1px solid ${LINE}`, borderRadius: 6, background: BG, color: FG, fontSize: 12, outline: "none", fontFamily: "inherit", width: 160 }}
+                    />
+                    <button
+                      onClick={() => novoFileRef.current?.click()}
+                      title="Subir identidade visual (PDF ou imagem) para preencher automaticamente"
+                      style={{
+                        padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer",
+                        background: novoArquivo ? FG : "transparent",
+                        color: novoArquivo ? BG : MUTED,
+                        border: `1px ${novoArquivo ? "solid" : "dashed"} ${novoArquivo ? FG : LINE}`,
+                        fontFamily: "inherit", whiteSpace: "nowrap" as const,
+                      }}
+                    >
+                      {novoArquivo ? `✓ ${novoArquivo.name.slice(0, 20)}` : "＋ ID visual (PDF/img)"}
+                    </button>
+                    <input ref={novoFileRef} type="file" accept=".pdf,image/*" style={{ display: "none" }} onChange={(e) => { setNovoArquivo(e.target.files?.[0] || null); e.target.value = ""; }} />
+                  </div>
+                  {novoArquivo && (
+                    <p style={{ fontSize: 11, color: MUTED, margin: 0 }}>
+                      Claude vai ler o arquivo e pré-preencher nome, tema, fonte e URL da marca.
+                    </p>
+                  )}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={criarPerfil}
+                      disabled={analisando || !novoNome.trim()}
+                      style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: analisando ? "default" : "pointer", background: FG, color: BG, border: "none", fontFamily: "inherit", opacity: (!novoNome.trim() || analisando) ? 0.5 : 1 }}
+                    >
+                      {analisando ? "Analisando..." : "Criar"}
+                    </button>
+                    <button
+                      onClick={() => { setCriandoNovo(false); setNovoNome(""); setNovoArquivo(null); }}
+                      style={{ padding: "6px 10px", borderRadius: 6, fontSize: 12, cursor: "pointer", background: "transparent", color: MUTED, border: `1px solid ${LINE}`, fontFamily: "inherit" }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button

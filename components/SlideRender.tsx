@@ -149,17 +149,15 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
         <img key={i} src={el.src} alt="" style={{ position: "absolute", left: `${el.x}%`, top: `${el.y}%`, width: el.tamanho, transform: `translate(-50%, -50%) rotate(${el.rotacao}deg)`, objectFit: "contain", pointerEvents: "none" }} />
       ))}
 
-      {slide.tipo === "capa" && (
-        <div style={{ position: "absolute", top: 96, left: 96 }}>
-          <Logo size={76} color={corTexto} marca={marca} fontSans={fontSans} />
-        </div>
-      )}
+      <div style={{ position: "absolute", top: 96, left: 96, lineHeight: 0 }}>
+        <Logo size={slide.tipo === "capa" ? 76 : 52} color={corTexto} marca={marca} fontSans={fontSans} />
+      </div>
 
       <div style={{
         position: "absolute",
         left: 96,
         right: imgPos === "direita" && slide.imagem ? dim.w * 0.48 : 96,
-        top: imgPos === "topo" && slide.imagem ? dim.h * 0.52 : slide.tipo === "capa" ? 380 : 200,
+        top: imgPos === "topo" && slide.imagem ? dim.h * 0.52 : slide.tipo === "capa" ? 380 : 280,
         bottom: imgPos === "base" && slide.imagem ? dim.h * 0.52 : undefined,
         overflow: "hidden",
         display: "flex", flexDirection: "column",
@@ -183,12 +181,6 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
           </>
         )}
       </div>
-
-      {slide.tipo === "cta" && (
-        <div style={{ position: "absolute", left: 96, bottom: 150, lineHeight: 0 }}>
-          <Logo size={150} color={temaPrincipal.fg} marca={marca} fontSans={fontSans} />
-        </div>
-      )}
 
       <Footer temaRodape={temaPrincipal} slide={slide} marca={marca} fontSerif={fontSerif} corTexto={corTexto} index={index} />
     </div>

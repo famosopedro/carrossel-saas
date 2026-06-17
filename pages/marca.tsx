@@ -164,6 +164,39 @@ export default function MarcaPage() {
     carregarPerfil(id);
   }
 
+  async function comprimirParaBase64(file: File): Promise<{ base64: string; mimeType: string }> {
+    if (file.type === "application/pdf") {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      return { base64: dataUrl.split(",")[1], mimeType: file.type };
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const MAX = 1400;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          const r = Math.min(MAX / width, MAX / height);
+          width = Math.round(width * r);
+          height = Math.round(height * r);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        resolve({ base64: dataUrl.split(",")[1], mimeType: "image/jpeg" });
+      };
+      img.src = url;
+    });
+  }
+
   async function criarPerfil() {
     const nome = novoNome.trim();
     if (!nome) return;
@@ -172,9 +205,10 @@ export default function MarcaPage() {
     let extraConfig: Partial<BrandConfig> = {};
 
     if (novoArquivos.length > 0) {
-      const oversized = novoArquivos.find(f => f.size > 10 * 1024 * 1024);
+      // PDFs não comprimem — limitar a 3MB. Imagens serão reduzidas no cliente.
+      const oversized = novoArquivos.find(f => f.type === "application/pdf" && f.size > 3 * 1024 * 1024);
       if (oversized) {
-        setErroAnalise(`"${oversized.name.slice(0, 30)}" passa de 10 MB.`);
+        setErroAnalise(`PDF "${oversized.name.slice(0, 30)}" passa de 3 MB. Exporte uma página como PNG.`);
         return;
       }
       setAnalisando(true);
@@ -185,19 +219,13 @@ export default function MarcaPage() {
         const arquivo = novoArquivos[i];
         const apiUrl = `${apiOrigin}${router.basePath}/api/analisar-marca`;
         try {
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(arquivo);
-          });
-          const base64 = dataUrl.split(",")[1];
+          const { base64, mimeType: mt } = await comprimirParaBase64(arquivo);
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), 45000);
           const resp = await fetch(apiUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ base64, mimeType: arquivo.type }),
+            body: JSON.stringify({ base64, mimeType: mt }),
             signal: controller.signal,
           });
           clearTimeout(timer);

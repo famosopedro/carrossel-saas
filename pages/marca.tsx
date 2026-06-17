@@ -179,14 +179,16 @@ export default function MarcaPage() {
           reader.readAsDataURL(novoArquivo);
         });
         const base64 = dataUrl.split(",")[1];
-        const resp = await fetch("/api/analisar-marca", {
+        const resp = await fetch(`${router.basePath}/api/analisar-marca`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ base64, mimeType: novoArquivo.type }),
         });
         const json = await resp.json();
         if (json.ok && json.config) extraConfig = json.config;
-      } catch {}
+      } catch (err) {
+        console.error("analisar-marca:", err);
+      }
       setAnalisando(false);
     }
 

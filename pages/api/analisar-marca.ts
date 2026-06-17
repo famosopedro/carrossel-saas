@@ -43,7 +43,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 {
   "nomeMarca": "nome da marca visto no documento",
   "tema": "dark" ou "light" (fundo escuro = dark, fundo claro = light)",
-  "fonte": "escolha UMA destas opções exata: Neue Haas Grotesk, Inter, Montserrat, Space Grotesk, DM Sans, Archivo — a mais parecida visualmente com a fonte principal de títulos",
+  "fonte": "nome exato da fonte principal usada nos títulos (ex: Gotham, Futura, Helvetica Neue, Circular) — o nome real, não uma aproximação",
+  "fonteSerif": "nome exato da fonte serif ou secundária se houver, senão string vazia",
   "url": "URL do site se visível, senão string vazia",
   "rodapeTexto": "slogan ou tagline curta se visível, senão string vazia"
 }`,

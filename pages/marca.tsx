@@ -749,79 +749,62 @@ export default function MarcaPage() {
           </Field>
 
           <Field>
-            <Label>Tamanho das fontes <span style={{ textTransform: "none", fontWeight: 400, color: MUTED }}>— px na resolução 1080</span></Label>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" as const }}>
-              <NumInput label="Título" value={marca.tituloTamanho} min={48} max={160} step={2} unit="px" onChange={(v) => set("tituloTamanho", v)} />
-              <NumInput label="Corpo" value={marca.corpoTamanho} min={24} max={80} step={2} unit="px" onChange={(v) => set("corpoTamanho", v)} />
-              <NumInput label="Serif" value={marca.serifTamanho} min={24} max={80} step={2} unit="px" onChange={(v) => set("serifTamanho", v)} />
-            </div>
-          </Field>
-
-          <Field>
-            <Label>Peso das fontes</Label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {([["tituloPeso", "Título"], ["corpoPeso", "Corpo"], ["serifPeso", "Serif"]] as [keyof BrandConfig, string][]).map(([key, lbl]) => (
-                <div key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 11, color: MUTED, width: 44, flexShrink: 0 }}>{lbl}</span>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {PESOS.map((p) => (
-                      <button key={p} onClick={() => set(key, p as BrandConfig[typeof key])} style={{ padding: "5px 10px", borderRadius: 4, fontSize: 11, fontWeight: p, cursor: "pointer", fontFamily: "inherit", background: marca[key] === p ? FG : CARD, color: marca[key] === p ? BG : MUTED, border: `1px solid ${marca[key] === p ? FG : LINE}` }}>{p}</button>
-                    ))}
-                  </div>
-                </div>
+            <Label>Tipografia</Label>
+            {/* grade: Tamanho · Peso · Entrelinhas */}
+            <div style={{ display: "grid", gridTemplateColumns: "52px 1fr 1fr 1fr", gap: "6px 12px", alignItems: "center" }}>
+              {/* header */}
+              <div />
+              {["Tamanho", "Peso", "Entrelinhas"].map(h => (
+                <span key={h} style={{ fontSize: 10, fontWeight: 600, color: MUTED, letterSpacing: "0.06em", textTransform: "uppercase" as const }}>{h}</span>
               ))}
+              {/* Título */}
+              <span style={{ fontSize: 11, color: MUTED }}>Título</span>
+              <NumInput label="" value={marca.tituloTamanho} min={48} max={160} step={2} unit="px" onChange={(v) => set("tituloTamanho", v)} />
+              <input type="range" min={400} max={900} step={100} value={marca.tituloPeso}
+                onChange={(e) => set("tituloPeso", +e.target.value)}
+                title={String(marca.tituloPeso)}
+                style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
+              <input type="range" min={0.8} max={1.6} step={0.01} value={marca.tituloEntreLinhas}
+                onChange={(e) => set("tituloEntreLinhas", +e.target.value)}
+                title={marca.tituloEntreLinhas.toFixed(2)}
+                style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
+              {/* Corpo */}
+              <span style={{ fontSize: 11, color: MUTED }}>Corpo</span>
+              <NumInput label="" value={marca.corpoTamanho} min={24} max={80} step={2} unit="px" onChange={(v) => set("corpoTamanho", v)} />
+              <input type="range" min={400} max={900} step={100} value={marca.corpoPeso}
+                onChange={(e) => set("corpoPeso", +e.target.value)}
+                title={String(marca.corpoPeso)}
+                style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
+              <input type="range" min={1.0} max={2.0} step={0.05} value={marca.corpoEntreLinhas}
+                onChange={(e) => set("corpoEntreLinhas", +e.target.value)}
+                title={marca.corpoEntreLinhas.toFixed(2)}
+                style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
+              {/* Serif */}
+              <span style={{ fontSize: 11, color: MUTED }}>Serif</span>
+              <NumInput label="" value={marca.serifTamanho} min={24} max={80} step={2} unit="px" onChange={(v) => set("serifTamanho", v)} />
+              <input type="range" min={400} max={900} step={100} value={marca.serifPeso}
+                onChange={(e) => set("serifPeso", +e.target.value)}
+                title={String(marca.serifPeso)}
+                style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
+              <input type="range" min={0.9} max={2.0} step={0.05} value={marca.serifEntreLinhas}
+                onChange={(e) => set("serifEntreLinhas", +e.target.value)}
+                title={marca.serifEntreLinhas.toFixed(2)}
+                style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
             </div>
-          </Field>
-
-          <Field>
-            <Label>Espaçamento — título</Label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <SliderField
-                label="Entrelinhas"
-                value={marca.tituloEntreLinhas}
-                min={0.8} max={1.6} step={0.01}
-                fmt={(v) => v.toFixed(2)}
-                onChange={(v) => set("tituloEntreLinhas", v)}
-              />
-              <SliderField
-                label="EntreLetras"
-                value={marca.tituloEntreLetras}
-                min={-0.1} max={0.1} step={0.005}
-                fmt={(v) => (v >= 0 ? "+" : "") + v.toFixed(3) + "em"}
-                onChange={(v) => set("tituloEntreLetras", v)}
-              />
+            {/* valores legíveis abaixo dos sliders */}
+            <div style={{ display: "grid", gridTemplateColumns: "52px 1fr 1fr 1fr", gap: "2px 12px", marginTop: 4 }}>
+              <div /><div />
+              <span style={{ fontSize: 10, color: MUTED, textAlign: "center" as const }}>{marca.tituloPeso} · {marca.corpoPeso} · {marca.serifPeso}</span>
+              <span style={{ fontSize: 10, color: MUTED, textAlign: "center" as const }}>{marca.tituloEntreLinhas.toFixed(2)} · {marca.corpoEntreLinhas.toFixed(2)} · {marca.serifEntreLinhas.toFixed(2)}</span>
             </div>
-          </Field>
-
-          <Field>
-            <Label>Espaçamento — corpo</Label>
-            <SliderField
-              label="Entrelinhas"
-              value={marca.corpoEntreLinhas}
-              min={1.0} max={2.0} step={0.05}
-              fmt={(v) => v.toFixed(2)}
-              onChange={(v) => set("corpoEntreLinhas", v)}
-            />
-          </Field>
-
-          <Field>
-            <Label>Espaçamento — subtítulo serif</Label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <SliderField
-                label="Entrelinhas"
-                value={marca.serifEntreLinhas}
-                min={0.9} max={2.0} step={0.05}
-                fmt={(v) => v.toFixed(2)}
-                onChange={(v) => set("serifEntreLinhas", v)}
-              />
-              <SliderField
-                label="Entreletras"
-                value={marca.serifEntreLetras}
-                min={-0.05} max={0.1} step={0.005}
-                fmt={(v) => (v >= 0 ? "+" : "") + v.toFixed(3) + "em"}
-                onChange={(v) => set("serifEntreLetras", v)}
-              />
-            </div>
+            {/* avançado */}
+            <details style={{ marginTop: 12 }}>
+              <summary style={{ fontSize: 11, color: MUTED, cursor: "pointer", userSelect: "none" as const }}>Avançado — entreletras</summary>
+              <div style={{ display: "flex", flexDirection: "column" as const, gap: 10, marginTop: 10 }}>
+                <SliderField label="Título" value={marca.tituloEntreLetras} min={-0.1} max={0.1} step={0.005} fmt={(v) => (v >= 0 ? "+" : "") + v.toFixed(3) + "em"} onChange={(v) => set("tituloEntreLetras", v)} />
+                <SliderField label="Serif" value={marca.serifEntreLetras} min={-0.05} max={0.1} step={0.005} fmt={(v) => (v >= 0 ? "+" : "") + v.toFixed(3) + "em"} onChange={(v) => set("serifEntreLetras", v)} />
+              </div>
+            </details>
           </Field>
 
           <Field>

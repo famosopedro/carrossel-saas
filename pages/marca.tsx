@@ -171,6 +171,10 @@ export default function MarcaPage() {
     let extraConfig: Partial<BrandConfig> = {};
 
     if (novoArquivo) {
+      if (novoArquivo.size > 3 * 1024 * 1024) {
+        setErroAnalise("Arquivo muito grande (máx 3 MB). Para PDFs, exporte uma página como PNG.");
+        return;
+      }
       setAnalisando(true);
       setErroAnalise(null);
       try {

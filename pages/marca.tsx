@@ -144,6 +144,18 @@ export default function MarcaPage() {
   useEffect(() => {
     const ps = getPerfis();
     setPerfis(ps);
+    if (ps.length > 0) {
+      const savedId = getPerfilAtivoId();
+      const found = ps.find(p => p.id === savedId);
+      const perfil = found || ps[0];
+      setPerfilAtivoIdState(perfil.id);
+      setPerfilAtivoId(perfil.id);
+      const m = { ...DEFAULT_BRAND, ...perfil.config };
+      setMarca(m);
+      registrarFontesCustom(m);
+      setCustomFontes((m.customFonts || []).filter(f => f.style === "normal").map(f => f.name));
+      setCustomFontesSerif((m.customFonts || []).filter(f => f.style === "italic").map(f => f.name));
+    }
   }, []);
 
   function carregarPerfil(id: string) {
@@ -495,6 +507,12 @@ export default function MarcaPage() {
               )}
             </div>
           </div>
+
+          {analisando && (
+            <p style={{ fontSize: 12, color: MUTED, marginBottom: 16 }}>
+              ⏳ Analisando arquivo {analisandoIdx + 1}… Claude está extraindo nome, tema e fonte.
+            </p>
+          )}
 
           {perfilAtivoId == null ? (
             <p style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>Selecione uma identidade acima para editar.</p>

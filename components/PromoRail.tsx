@@ -11,6 +11,7 @@ type Oferta = {
   cta: string;
   href: string;
   destaque?: boolean;
+  imagem?: string;
 };
 
 // Dados reais — famosopedro.com.br · ordem de valor (grátis → R$97 → R$697)
@@ -39,6 +40,7 @@ const OFERTAS: Oferta[] = [
     precoNota: "acesso vitalício",
     cta: "Destravar o Agente",
     href: "https://pay.kiwify.com.br/8K0uRhK",
+    imagem: "https://www.famosopedro.com.br/agentefinal.png",
   },
   {
     eyebrow: "Diagnóstico FAMOSO.®",
@@ -89,8 +91,15 @@ export default function PromoRail() {
         {o.destaque && <div style={{ height: 3, background: ACCENT, flexShrink: 0 }} />}
 
         <div key={idx} className="promo-fade" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "26px 22px 28px" }}>
-          {/* topo: eyebrow + título + bullets */}
+          {/* topo: imagem + eyebrow + título + bullets */}
           <div>
+            {o.imagem && (
+              <img
+                src={o.imagem}
+                alt={o.eyebrow}
+                style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", marginBottom: 14, display: "block" }}
+              />
+            )}
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: MUTED, margin: "0 0 12px" }}>
               {o.eyebrow}
             </p>

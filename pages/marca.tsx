@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { getMarca, saveMarca, FONTES, FONTES_SERIF, PESOS, DEFAULT_BRAND, SLIDE_DEFAULTS, type BrandConfig, type Slide } from "@/lib/storage";
+import { getMarca, saveMarca, getPerfis, savePerfis, getPerfilAtivoId, setPerfilAtivoId, FONTES, FONTES_SERIF, PESOS, DEFAULT_BRAND, SLIDE_DEFAULTS, type BrandConfig, type BrandProfile, type Slide } from "@/lib/storage";
 import { registrarFontesCustom, fileToDataUrl } from "@/lib/fonts";
 import SlideRender, { DIM } from "@/components/SlideRender";
 import PromoRail from "@/components/PromoRail";
@@ -131,13 +131,56 @@ export default function MarcaPage() {
   const fonteSansRef = useRef<HTMLInputElement>(null);
   const fonteSerifRef = useRef<HTMLInputElement>(null);
 
+  const [perfis, setPerfis] = useState<BrandProfile[]>([]);
+  const [perfilAtivoId, setPerfilAtivoIdState] = useState<string | null>(null);
+  const [criandoNovo, setCriandoNovo] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+
   useEffect(() => {
-    const m = getMarca();
+    const ps = getPerfis();
+    setPerfis(ps);
+  }, []);
+
+  function carregarPerfil(id: string) {
+    const ps = getPerfis();
+    const p = ps.find(p => p.id === id) || ps[0];
+    if (!p) return;
+    const m = { ...DEFAULT_BRAND, ...p.config };
     setMarca(m);
     registrarFontesCustom(m);
     setCustomFontes((m.customFonts || []).filter((f) => f.style === "normal").map((f) => f.name));
     setCustomFontesSerif((m.customFonts || []).filter((f) => f.style === "italic").map((f) => f.name));
-  }, []);
+    setSaved(false);
+  }
+
+  function switchPerfil(id: string) {
+    setPerfilAtivoId(id);
+    setPerfilAtivoIdState(id);
+    carregarPerfil(id);
+  }
+
+  function criarPerfil() {
+    const nome = novoNome.trim();
+    if (!nome) return;
+    const id = `perfil_${Date.now()}`;
+    const novo: BrandProfile = { id, nome, config: { ...DEFAULT_BRAND, nomeMarca: nome } };
+    const ps = [...getPerfis(), novo];
+    savePerfis(ps);
+    setPerfis(ps);
+    setNovoNome("");
+    setCriandoNovo(false);
+    switchPerfil(id);
+  }
+
+  function deletarPerfil(id: string) {
+    const ps = getPerfis().filter(p => p.id !== id);
+    const next = ps.length ? ps : [{ id: "famoso", nome: "FAMOSO.", config: DEFAULT_BRAND }];
+    savePerfis(next);
+    setPerfis(next);
+    if (perfilAtivoId === id) {
+      switchPerfil(next[0].id);
+    }
+  }
 
   function set<K extends keyof BrandConfig>(key: K, value: BrandConfig[K]) {
     setMarca((prev) => ({ ...prev, [key]: value }));
@@ -150,6 +193,7 @@ export default function MarcaPage() {
       alert("Não foi possível salvar — o armazenamento do navegador está cheio. Remova fontes ou logos pesados e tente de novo.");
       return;
     }
+    setPerfis(getPerfis());
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -207,6 +251,117 @@ export default function MarcaPage() {
 
         {/* Form */}
         <div>
+          {/* Seletor de perfis */}
+          <div style={{ marginBottom: 32 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: MUTED, marginBottom: 12 }}>
+              Identidade visual
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" as const }}>
+              {perfis.map((p) => {
+                const ativo = perfilAtivoId === p.id;
+                return (
+                  <div key={p.id} style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                    <button
+                      onClick={() => switchPerfil(p.id)}
+                      style={{
+                        padding: "7px 14px",
+                        paddingRight: perfis.length > 1 ? 28 : 14,
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: ativo ? 700 : 500,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        background: ativo ? FG : CARD,
+                        color: ativo ? BG : MUTED,
+                        border: `1px solid ${ativo ? FG : LINE}`,
+                        transition: "all 0.1s",
+                        whiteSpace: "nowrap" as const,
+                      }}
+                    >
+                      {p.nome}
+                    </button>
+                    {perfis.length > 1 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deletarPerfil(p.id); }}
+                        title="Remover perfil"
+                        style={{
+                          position: "absolute",
+                          right: 6,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          width: 14,
+                          height: 14,
+                          borderRadius: "50%",
+                          background: "transparent",
+                          border: "none",
+                          color: ativo ? BG : MUTED,
+                          fontSize: 9,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          opacity: 0.6,
+                          padding: 0,
+                          lineHeight: 1,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              {criandoNovo ? (
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    autoFocus
+                    value={novoNome}
+                    onChange={(e) => setNovoNome(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") criarPerfil();
+                      if (e.key === "Escape") { setCriandoNovo(false); setNovoNome(""); }
+                    }}
+                    placeholder="Nome da marca..."
+                    style={{
+                      padding: "6px 10px",
+                      border: `1px solid ${LINE}`,
+                      borderRadius: 6,
+                      background: CARD,
+                      color: FG,
+                      fontSize: 12,
+                      outline: "none",
+                      fontFamily: "inherit",
+                      width: 160,
+                    }}
+                  />
+                  <button
+                    onClick={criarPerfil}
+                    style={{ padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer", background: FG, color: BG, border: "none", fontFamily: "inherit" }}
+                  >
+                    Criar
+                  </button>
+                  <button
+                    onClick={() => { setCriandoNovo(false); setNovoNome(""); }}
+                    style={{ padding: "6px 10px", borderRadius: 6, fontSize: 12, cursor: "pointer", background: "transparent", color: MUTED, border: `1px solid ${LINE}`, fontFamily: "inherit" }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setCriandoNovo(true)}
+                  style={{ padding: "7px 14px", borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: "pointer", background: "transparent", color: MUTED, border: `1px dashed ${LINE}`, fontFamily: "inherit", whiteSpace: "nowrap" as const }}
+                >
+                  + Nova identidade
+                </button>
+              )}
+            </div>
+          </div>
+
+          {perfilAtivoId == null ? (
+            <p style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>Selecione uma identidade acima para editar.</p>
+          ) : (
+          <>
           <p style={{ ...eyebrow, fontSize: 20, marginBottom: 28 }}>
             Identidade da marca
           </p>
@@ -449,10 +604,12 @@ export default function MarcaPage() {
           >
             {saved ? "Salvo ✓" : "Salvar identidade"}
           </button>
+          </>
+          )}
         </div>
 
         {/* Preview */}
-        <div style={{ position: "sticky", top: 80 }}>
+        <div style={{ position: "sticky", top: 80, opacity: perfilAtivoId == null ? 0.3 : 1, pointerEvents: perfilAtivoId == null ? "none" : "auto", transition: "opacity 0.2s" }}>
           <p style={{ ...eyebrow, fontSize: 16, marginBottom: 16 }}>
             Preview
           </p>

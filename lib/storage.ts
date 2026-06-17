@@ -112,11 +112,50 @@ export const FONTES_SERIF = ["Awesome Serif"];
 
 export const PESOS = [400, 500, 600, 700, 800, 900];
 
+export type BrandProfile = { id: string; nome: string; config: BrandConfig };
+
+const FAMOSO_DEFAULT_PROFILE: BrandProfile = { id: "famoso", nome: "FAMOSO.", config: DEFAULT_BRAND };
+
+export function getPerfis(): BrandProfile[] {
+  if (typeof window === "undefined") return [FAMOSO_DEFAULT_PROFILE];
+  try {
+    const raw = localStorage.getItem("famoso_perfis");
+    if (raw) {
+      const arr = JSON.parse(raw) as BrandProfile[];
+      return arr.length ? arr : [FAMOSO_DEFAULT_PROFILE];
+    }
+    // migrate legacy key
+    const legacyRaw = localStorage.getItem("famoso_marca");
+    if (legacyRaw) {
+      const config = { ...DEFAULT_BRAND, ...JSON.parse(legacyRaw) };
+      return [{ id: "famoso", nome: config.nomeMarca || "FAMOSO.", config }];
+    }
+    return [FAMOSO_DEFAULT_PROFILE];
+  } catch {
+    return [FAMOSO_DEFAULT_PROFILE];
+  }
+}
+
+export function savePerfis(perfis: BrandProfile[]): void {
+  try { localStorage.setItem("famoso_perfis", JSON.stringify(perfis)); } catch {}
+}
+
+export function getPerfilAtivoId(): string {
+  if (typeof window === "undefined") return "famoso";
+  return localStorage.getItem("famoso_perfil_ativo") || "famoso";
+}
+
+export function setPerfilAtivoId(id: string): void {
+  try { localStorage.setItem("famoso_perfil_ativo", id); } catch {}
+}
+
 export function getMarca(): BrandConfig {
   if (typeof window === "undefined") return DEFAULT_BRAND;
   try {
-    const raw = localStorage.getItem("famoso_marca");
-    return raw ? { ...DEFAULT_BRAND, ...JSON.parse(raw) } : DEFAULT_BRAND;
+    const perfis = getPerfis();
+    const id = getPerfilAtivoId();
+    const perfil = perfis.find(p => p.id === id) || perfis[0];
+    return perfil ? { ...DEFAULT_BRAND, ...perfil.config } : DEFAULT_BRAND;
   } catch {
     return DEFAULT_BRAND;
   }
@@ -125,6 +164,15 @@ export function getMarca(): BrandConfig {
 // true = salvou; false = falhou (ex: quota cheia)
 export function saveMarca(config: BrandConfig): boolean {
   try {
+    const perfis = getPerfis();
+    const id = getPerfilAtivoId();
+    const idx = perfis.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      perfis[idx] = { ...perfis[idx], nome: config.nomeMarca || perfis[idx].nome, config };
+    } else {
+      perfis.push({ id: id || "famoso", nome: config.nomeMarca || "Sem nome", config });
+    }
+    savePerfis(perfis);
     localStorage.setItem("famoso_marca", JSON.stringify(config));
     return true;
   } catch {
@@ -134,7 +182,7 @@ export function saveMarca(config: BrandConfig): boolean {
 
 export function isMarcaConfigurada(): boolean {
   if (typeof window === "undefined") return false;
-  return localStorage.getItem("famoso_marca") != null;
+  return localStorage.getItem("famoso_perfis") != null || localStorage.getItem("famoso_marca") != null;
 }
 
 export function getCarrosseis(): Carrossel[] {

@@ -279,7 +279,9 @@ export default function MarcaPage() {
 
     // Atualiza o form independente de storage
     const configFinal: BrandConfig = { ...configInicial, ...extraConfig };
+    console.log("[marca] aplicando configFinal:", JSON.stringify(configFinal));
     setMarca(configFinal);
+    setPerfilAtivoIdState(id); // garante que o form continua visível
     setSaved(false);
 
     // Tenta persistir

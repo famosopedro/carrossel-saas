@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/router";
-import { getMarca, saveMarca, getPerfis, savePerfis, getPerfilAtivoId, setPerfilAtivoId, FONTES, FONTES_SERIF, PESOS, DEFAULT_BRAND, SLIDE_DEFAULTS, type BrandConfig, type BrandProfile, type Slide } from "@/lib/storage";
+import { getMarca, saveMarca, getPerfis, savePerfis, getPerfilAtivoId, setPerfilAtivoId, FONTES, FONTES_SERIF, PESOS, DEFAULT_BRAND, BLANK_BRAND, SLIDE_DEFAULTS, type BrandConfig, type BrandProfile, type Slide } from "@/lib/storage";
 import { registrarFontesCustom, fileToDataUrl } from "@/lib/fonts";
 import SlideRender, { DIM } from "@/components/SlideRender";
 import PromoRail from "@/components/PromoRail";
@@ -223,7 +223,7 @@ export default function MarcaPage() {
     }
 
     // 1. Cria perfil vazio e abre o form imediatamente
-    const configInicial: BrandConfig = { ...DEFAULT_BRAND, nomeMarca: nome };
+    const configInicial: BrandConfig = { ...BLANK_BRAND, nomeMarca: nome };
     const novo: BrandProfile = { id, nome, config: configInicial };
     const ps = [...getPerfis(), novo];
     savePerfis(ps);

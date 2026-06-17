@@ -91,6 +91,31 @@ export const DEFAULT_BRAND: BrandConfig = {
   customFonts: [],
 };
 
+export const BLANK_BRAND: BrandConfig = {
+  nomeMarca: "",
+  url: "",
+  fonte: "",
+  fonteSerif: "",
+  logo: null,
+  logos: [],
+  tema: "dark",
+  formato: "vertical",
+  tituloTamanho: 96,
+  corpoTamanho: 40,
+  serifTamanho: 46,
+  tituloPeso: 800,
+  corpoPeso: 400,
+  serifPeso: 500,
+  tituloEntreLetras: -0.03,
+  tituloEntreLinhas: 1.02,
+  corpoEntreLinhas: 1.35,
+  serifEntreLetras: 0,
+  serifEntreLinhas: 1.25,
+  rodapeTexto: "",
+  assets: [],
+  customFonts: [],
+};
+
 export const SLIDE_DEFAULTS: Pick<Slide, "layout" | "splitRatio" | "tituloDecoracao" | "corpoDecoracao" | "serifDecoracao" | "imagem" | "imagemPos" | "imagemOpacidade"> = {
   layout: "normal",
   splitRatio: 0.58,

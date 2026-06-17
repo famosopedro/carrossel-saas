@@ -202,53 +202,15 @@ export default function MarcaPage() {
     if (!nome) return;
     const id = `perfil_${Date.now()}`;
 
-    let extraConfig: Partial<BrandConfig> = {};
-
-    if (novoArquivos.length > 0) {
-      // PDFs não comprimem — limitar a 3MB. Imagens serão reduzidas no cliente.
-      const oversized = novoArquivos.find(f => f.type === "application/pdf" && f.size > 3 * 1024 * 1024);
-      if (oversized) {
-        setErroAnalise(`PDF "${oversized.name.slice(0, 30)}" passa de 3 MB. Exporte uma página como PNG.`);
-        return;
-      }
-      setAnalisando(true);
-      setErroAnalise(null);
-      for (let i = 0; i < novoArquivos.length; i++) {
-        setAnalisandoIdx(i);
-        const arquivo = novoArquivos[i];
-        // Chama famoso-site diretamente — mesma origem, sem CORS, sem limite de proxy
-        const apiUrl = "/api/analisar-marca";
-        try {
-          const { base64, mimeType: mt } = await comprimirParaBase64(arquivo);
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 45000);
-          const resp = await fetch(apiUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ base64, mimeType: mt }),
-            signal: controller.signal,
-          });
-          clearTimeout(timer);
-          const json = await resp.json();
-          if (json.ok && json.config) {
-            const partial = Object.fromEntries(
-              Object.entries(json.config).filter(([, v]) => v !== "" && v != null)
-            ) as Partial<BrandConfig>;
-            extraConfig = { ...extraConfig, ...partial };
-          } else {
-            setErroAnalise(json.error || `Erro ${resp.status} em "${arquivo.name.slice(0, 20)}"`);
-          }
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          setErroAnalise(msg.includes("abort") ? `Tempo esgotado: "${arquivo.name.slice(0, 20)}"` : `${msg} → ${apiUrl}`);
-        }
-      }
-      setAnalisando(false);
-      setAnalisandoIdx(0);
+    const oversized = novoArquivos.find(f => f.type === "application/pdf" && f.size > 3 * 1024 * 1024);
+    if (oversized) {
+      setErroAnalise(`PDF "${oversized.name.slice(0, 30)}" passa de 3 MB. Exporte uma página como PNG.`);
+      return;
     }
 
-    const config: BrandConfig = { ...DEFAULT_BRAND, nomeMarca: nome, ...extraConfig };
-    const novo: BrandProfile = { id, nome: config.nomeMarca || nome, config };
+    // 1. Cria perfil vazio e abre o form imediatamente
+    const configInicial: BrandConfig = { ...DEFAULT_BRAND, nomeMarca: nome };
+    const novo: BrandProfile = { id, nome, config: configInicial };
     const ps = [...getPerfis(), novo];
     savePerfis(ps);
     setPerfis(ps);
@@ -256,6 +218,58 @@ export default function MarcaPage() {
     setNovoArquivos([]);
     setCriandoNovo(false);
     switchPerfil(id);
+
+    // 2. Análise roda em background e atualiza os campos quando terminar
+    if (novoArquivos.length === 0) return;
+    setAnalisando(true);
+    setErroAnalise(null);
+    let extraConfig: Partial<BrandConfig> = {};
+    const arquivos = [...novoArquivos];
+    for (let i = 0; i < arquivos.length; i++) {
+      setAnalisandoIdx(i);
+      const arquivo = arquivos[i];
+      const apiUrl = "/api/analisar-marca";
+      try {
+        const { base64, mimeType: mt } = await comprimirParaBase64(arquivo);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 45000);
+        const resp = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64, mimeType: mt }),
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
+        const json = await resp.json();
+        if (json.ok && json.config) {
+          const partial = Object.fromEntries(
+            Object.entries(json.config).filter(([, v]) => v !== "" && v != null)
+          ) as Partial<BrandConfig>;
+          extraConfig = { ...extraConfig, ...partial };
+        } else {
+          setErroAnalise(json.error || `Erro ${resp.status}`);
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setErroAnalise(msg.includes("abort") ? "Tempo esgotado" : msg);
+      }
+    }
+    setAnalisando(false);
+    setAnalisandoIdx(0);
+
+    if (Object.keys(extraConfig).length === 0) return;
+
+    // Atualiza o perfil com os dados extraídos e recarrega o form
+    const configFinal: BrandConfig = { ...configInicial, ...extraConfig };
+    const perfisSalvos = getPerfis();
+    const idx = perfisSalvos.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      perfisSalvos[idx] = { ...perfisSalvos[idx], nome: configFinal.nomeMarca || nome, config: configFinal };
+      savePerfis(perfisSalvos);
+      setPerfis([...perfisSalvos]);
+      setMarca(configFinal);
+      setSaved(false);
+    }
   }
 
   function deletarPerfil(id: string) {

@@ -217,7 +217,11 @@ export default function MarcaPage() {
     setNovoNome("");
     setNovoArquivos([]);
     setCriandoNovo(false);
-    switchPerfil(id);
+    setPerfilAtivoId(id);
+    setPerfilAtivoIdState(id);
+    setMarca(configInicial);
+    setSaved(false);
+    console.log("[marca] perfil criado, id=", id, "perfilAtivoId setado");
 
     // 2. Análise roda em background e atualiza os campos quando terminar
     if (novoArquivos.length === 0) return;

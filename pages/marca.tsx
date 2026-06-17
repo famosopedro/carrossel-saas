@@ -213,11 +213,11 @@ export default function MarcaPage() {
       }
       setAnalisando(true);
       setErroAnalise(null);
-      const apiOrigin = process.env.NEXT_PUBLIC_CARROSSEL_ORIGIN || "";
       for (let i = 0; i < novoArquivos.length; i++) {
         setAnalisandoIdx(i);
         const arquivo = novoArquivos[i];
-        const apiUrl = `${apiOrigin}${router.basePath}/api/analisar-marca`;
+        // Chama famoso-site diretamente — mesma origem, sem CORS, sem limite de proxy
+        const apiUrl = "/api/analisar-marca";
         try {
           const { base64, mimeType: mt } = await comprimirParaBase64(arquivo);
           const controller = new AbortController();

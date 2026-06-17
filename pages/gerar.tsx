@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { getMarca, saveMarca, saveCarrossel, SLIDE_DEFAULTS, FONTES, FONTES_SERIF, PESOS, type BrandConfig, type Slide, type SlideTipo, type TextDec, type SlideLayout } from "@/lib/storage";
+import { useRouter } from "next/router";
+import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, DEFAULT_BRAND, SLIDE_DEFAULTS, FONTES, FONTES_SERIF, PESOS, type BrandConfig, type Slide, type SlideTipo, type TextDec, type SlideLayout } from "@/lib/storage";
 import SlideRender, { DIM } from "@/components/SlideRender";
+import PromoRail from "@/components/PromoRail";
 import { exportSlidePng, exportAllZip } from "@/lib/export";
-
-const BG = "#1c1c1c";
-const FG = "#ededed";
-const MUTED = "rgba(237,237,237,0.45)";
-const LINE = "rgba(237,237,237,0.1)";
-const CARD = "#232323";
+import { BG, SURFACE, FG, MUTED, FAINT, LINE, LINE2, CARD, OK, ACCENT, SERIF, eyebrow } from "@/lib/ui";
 
 const SLIDE_OPTIONS = [5, 8, 10];
 const TIPOS: { v: SlideTipo; label: string }[] = [
@@ -34,22 +31,33 @@ function ScaledSlide({ slide, index, total, marca, larguraAlvo }: {
 }
 
 export default function Gerar() {
+  const router = useRouter();
   const [tema, setTema] = useState("");
   const [quantidade, setQuantidade] = useState(5);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [sel, setSel] = useState(0);
-  const [marca, setMarca] = useState<BrandConfig>(getMarca());
-  const [savedId, setSavedId] = useState<string | null>(null);
+  const [marca, setMarca] = useState<BrandConfig>(DEFAULT_BRAND); // hidrata via useEffect (evita mismatch SSR)
+  const [carrosselId, setCarrosselId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [regenIdx, setRegenIdx] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
+  const [zipProg, setZipProg] = useState<string | null>(null);
   const [marcaOpen, setMarcaOpen] = useState(false);
+  const [undo, setUndo] = useState<{ msg: string; restore: () => void } | null>(null);
   const logoFileRef = useRef<HTMLInputElement>(null);
   const assetFileRef = useRef<HTMLInputElement>(null);
+  const criadoEmRef = useRef<number>(0); // setado ao gerar ou carregar
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
   const imgFileRef = useRef<HTMLInputElement>(null);
+
+  function showUndo(msg: string, restore: () => void) {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndo({ msg, restore });
+    undoTimer.current = setTimeout(() => setUndo(null), 5000);
+  }
 
   function setM<K extends keyof BrandConfig>(key: K, value: BrandConfig[K]) {
     setMarca((prev) => {
@@ -81,9 +89,39 @@ export default function Gerar() {
 
   useEffect(() => { setMarca(getMarca()); }, []);
 
+  // Carrega carrossel: ?id= vindo do dashboard (corrige "Editar"), senão retoma o último rascunho.
+  // ?new=1 (botão "Novo carrossel") força começar em branco.
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.new) return;
+    const qid = typeof router.query.id === "string" ? router.query.id : null;
+    const id = qid || getUltimoId();
+    if (!id) return;
+    const c = getCarrossel(id);
+    if (c) {
+      setSlides(c.slides);
+      setTema(c.tema);
+      setCarrosselId(c.id);
+      criadoEmRef.current = c.criadoEm;
+      setSel(0);
+    }
+  }, [router.isReady, router.query.id, router.query.new]);
+
+  // Auto-save: persiste no dashboard a cada mudança (debounce 600ms).
+  // carrosselId já está sempre setado quando há slides (em handleGerar e no load).
+  useEffect(() => {
+    if (!slides.length || !carrosselId) return;
+    const id = carrosselId;
+    const t = setTimeout(() => {
+      saveCarrossel({ id, tema, slides, criadoEm: criadoEmRef.current || Date.now() });
+      setUltimoId(id);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [slides, tema, carrosselId]);
+
   async function handleGerar() {
     if (!tema.trim()) return;
-    setLoading(true); setErro(null); setSavedId(null);
+    setLoading(true); setErro(null);
     try {
       const res = await fetch("/api/gerar", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -91,15 +129,19 @@ export default function Gerar() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro desconhecido");
+      // carrossel novo = id novo (não sobrescreve o que já estava salvo)
+      setCarrosselId(`c_${Date.now()}`);
+      criadoEmRef.current = Date.now();
       setSlides(data.slides);
       setSel(0);
-    } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao gerar");
+    } catch {
+      setErro("Não consegui gerar agora. Tente de novo em alguns segundos.");
     } finally { setLoading(false); }
   }
 
   async function regenerarSlide(i: number) {
-    setRegenIdx(i); setSavedId(null);
+    setRegenIdx(i);
+    const anterior = slides[i];
     try {
       const res = await fetch("/api/regenerar", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -108,39 +150,34 @@ export default function Gerar() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSlides((p) => p.map((s, j) => (j === i ? data.slide : s)));
+      showUndo("Slide regenerado", () => setSlides((p) => p.map((s, j) => (j === i ? anterior : s))));
     } catch { setErro("Falha ao regenerar"); }
     finally { setRegenIdx(null); }
   }
 
   function update<K extends keyof Slide>(i: number, field: K, value: Slide[K]) {
     setSlides((p) => p.map((s, j) => (j === i ? { ...s, [field]: value } : s)));
-    setSavedId(null);
   }
 
   function addSlide() {
     setSlides((p) => { const n = [...p, { ...SLIDE_VAZIO }]; setSel(n.length - 1); return n; });
-    setSavedId(null);
   }
   function removeSlide(i: number) {
+    const removido = slides[i];
     setSlides((p) => p.filter((_, j) => j !== i));
     setSel((s) => Math.max(0, s >= i ? s - 1 : s));
-    setSavedId(null);
+    showUndo("Slide removido", () => {
+      setSlides((p) => { const n = [...p]; n.splice(i, 0, removido); return n; });
+      setSel(i);
+    });
   }
   function duplicar(i: number) {
     setSlides((p) => { const n = [...p]; n.splice(i + 1, 0, { ...p[i] }); return n; });
-    setSavedId(null);
   }
   function mover(i: number, dir: -1 | 1) {
     const j = i + dir;
     setSlides((p) => { if (j < 0 || j >= p.length) return p; const n = [...p]; [n[i], n[j]] = [n[j], n[i]]; return n; });
     setSel((s) => (s === i ? i + dir : s));
-    setSavedId(null);
-  }
-
-  function handleSalvar() {
-    const id = savedId || `c_${Date.now()}`;
-    saveCarrossel({ id, tema, slides, criadoEm: Date.now() });
-    setSavedId(id);
   }
 
   async function baixarUm() {
@@ -148,23 +185,25 @@ export default function Gerar() {
     if (node) await exportSlidePng(node, `slide-${sel + 1}`);
   }
   async function baixarTodos() {
-    setExportando(true);
+    setExportando(true); setZipProg("0/" + slides.length);
     try {
       const nodes = exportRefs.current.filter(Boolean) as HTMLDivElement[];
-      await exportAllZip(nodes, (tema || "carrossel").slice(0, 30).replace(/\s+/g, "-"));
-    } finally { setExportando(false); }
+      await exportAllZip(nodes, (tema || "carrossel").slice(0, 30).replace(/\s+/g, "-"), (feito, total) => setZipProg(`${feito}/${total}`));
+    } finally { setExportando(false); setZipProg(null); }
   }
 
   const temSlides = slides.length > 0;
   const atual = slides[sel];
+  const fontesSans = [...FONTES, ...(marca.customFonts || []).filter((f) => f.style === "normal").map((f) => f.name)].filter((v, i, a) => a.indexOf(v) === i);
+  const fontesSerif = [...FONTES_SERIF, ...(marca.customFonts || []).filter((f) => f.style === "italic").map((f) => f.name)].filter((v, i, a) => a.indexOf(v) === i);
 
   return (
-    <div style={{ background: BG, minHeight: "calc(100vh - 52px)", color: FG, display: "flex" }}>
+    <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
 
       {/* SIDEBAR */}
-      <aside style={{ width: marcaOpen ? 300 : 270, borderRight: `1px solid ${LINE}`, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, position: "sticky", top: 52, height: "calc(100vh - 52px)", overflowY: "auto", transition: "width 0.2s" }}>
+      <aside style={{ width: marcaOpen ? 300 : 270, background: SURFACE, borderRight: `1px solid ${LINE}`, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, position: "sticky", top: 56, height: "calc(100vh - 56px)", overflowY: "auto", transition: "width 0.2s" }}>
         {/* Brand card — expansível */}
-        <div style={{ borderRadius: 6, border: `1px solid ${LINE}` }}>
+        <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, overflow: "hidden" }}>
           <button
             onClick={() => setMarcaOpen((o) => !o)}
             style={{ width: "100%", padding: "10px 12px", background: CARD, border: "none", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" as const }}
@@ -186,9 +225,9 @@ export default function Gerar() {
 
               {/* Fonte títulos */}
               <div>
-                <p style={{ margin: "0 0 7px", fontSize: 10, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Fonte títulos</p>
+                <p style={{ margin: "0 0 9px", fontFamily: SERIF, fontStyle: "italic" as const, fontWeight: 500, fontSize: 15, color: FG, letterSpacing: "0.01em" }}>Fonte títulos</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
-                  {FONTES.map((f) => (
+                  {fontesSans.map((f) => (
                     <button key={f} onClick={() => setM("fonte", f)} style={{ padding: "6px 0", borderRadius: 5, fontSize: 11, fontFamily: `'${f}', sans-serif`, fontWeight: 700, cursor: "pointer", background: marca.fonte === f ? FG : CARD, color: marca.fonte === f ? BG : MUTED, border: `1px solid ${marca.fonte === f ? FG : LINE}` }}>
                       {f}
                     </button>
@@ -198,9 +237,9 @@ export default function Gerar() {
 
               {/* Fonte serif */}
               <div>
-                <p style={{ margin: "0 0 7px", fontSize: 10, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Fonte serif</p>
+                <p style={{ margin: "0 0 9px", fontFamily: SERIF, fontStyle: "italic" as const, fontWeight: 500, fontSize: 15, color: FG, letterSpacing: "0.01em" }}>Fonte serif</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
-                  {FONTES_SERIF.map((f) => (
+                  {fontesSerif.map((f) => (
                     <button key={f} onClick={() => setM("fonteSerif", f)} style={{ padding: "6px 0", borderRadius: 5, fontSize: 11, fontFamily: `'${f}', serif`, fontStyle: "italic", fontWeight: 500, cursor: "pointer", background: marca.fonteSerif === f ? FG : CARD, color: marca.fonteSerif === f ? BG : MUTED, border: `1px solid ${marca.fonteSerif === f ? FG : LINE}` }}>
                       {f}
                     </button>
@@ -210,7 +249,7 @@ export default function Gerar() {
 
               {/* Tamanhos */}
               <div>
-                <p style={{ margin: "0 0 7px", fontSize: 10, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Tamanho</p>
+                <p style={{ margin: "0 0 9px", fontFamily: SERIF, fontStyle: "italic" as const, fontWeight: 500, fontSize: 15, color: FG, letterSpacing: "0.01em" }}>Tamanho</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {([["Título", "tituloTamanho", 48, 160], ["Corpo", "corpoTamanho", 24, 80], ["Serif", "serifTamanho", 24, 80]] as const).map(([lbl, key, min, max]) => (
                     <div key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -224,7 +263,7 @@ export default function Gerar() {
 
               {/* Pesos */}
               <div>
-                <p style={{ margin: "0 0 7px", fontSize: 10, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Peso</p>
+                <p style={{ margin: "0 0 9px", fontFamily: SERIF, fontStyle: "italic" as const, fontWeight: 500, fontSize: 15, color: FG, letterSpacing: "0.01em" }}>Peso</p>
                 {([["Título", "tituloPeso"], ["Corpo", "corpoPeso"], ["Serif", "serifPeso"]] as const).map(([lbl, key]) => (
                   <div key={key} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
                     <span style={{ fontSize: 10, color: MUTED, width: 36, flexShrink: 0 }}>{lbl}</span>
@@ -239,7 +278,7 @@ export default function Gerar() {
 
               {/* Logos */}
               <div>
-                <p style={{ margin: "0 0 7px", fontSize: 10, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Logo</p>
+                <p style={{ margin: "0 0 9px", fontFamily: SERIF, fontStyle: "italic" as const, fontWeight: 500, fontSize: 15, color: FG, letterSpacing: "0.01em" }}>Logo</p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
                   {(marca.logos || []).map((src, i) => {
                     const ativo = marca.logo === src;
@@ -261,7 +300,7 @@ export default function Gerar() {
 
               {/* Assets */}
               <div>
-                <p style={{ margin: "0 0 7px", fontSize: 10, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Assets PNG/SVG</p>
+                <p style={{ margin: "0 0 9px", fontFamily: SERIF, fontStyle: "italic" as const, fontWeight: 500, fontSize: 15, color: FG, letterSpacing: "0.01em" }}>Assets PNG/SVG</p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5 }}>
                   {(marca.assets || []).map((src, i) => (
                     <div key={i} style={{ position: "relative" }}>
@@ -287,12 +326,12 @@ export default function Gerar() {
           )}
         </div>
 
-        <div>
-          <label style={lblStyle}>Tema</label>
+        <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px" }}>
+          <label style={lblStyle}>Sobre o que é o carrossel?</label>
           <textarea value={tema} onChange={(e) => setTema(e.target.value)} placeholder="Ex: como criar carrosseis com IA em 30s" rows={3} style={taStyle} />
         </div>
 
-        <div>
+        <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px" }}>
           <label style={lblStyle}>Slides</label>
           <div style={{ display: "flex", gap: 6 }}>
             {SLIDE_OPTIONS.map((n) => (
@@ -302,57 +341,83 @@ export default function Gerar() {
         </div>
 
         <button onClick={handleGerar} disabled={loading || !tema.trim()} style={primaryBtn(loading || !tema.trim())}>
-          {loading ? "Gerando..." : "Gerar com IA →"}
+          {loading ? "Criando seus slides…" : "Gerar com IA →"}
         </button>
         {erro && <p style={{ fontSize: 11, color: "#f87171", margin: 0, lineHeight: 1.5 }}>{erro}</p>}
 
         {temSlides && (
           <>
-            <div style={{ borderTop: `1px solid ${LINE}`, paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={lblStyle}>Exportar</label>
               <button onClick={baixarUm} style={ghostBtn}>↓ Slide atual (PNG)</button>
-              <button onClick={baixarTodos} disabled={exportando} style={ghostBtn}>{exportando ? "Gerando ZIP..." : "↓ Todos (ZIP)"}</button>
+              <button onClick={baixarTodos} disabled={exportando} style={ghostBtn}>{exportando ? `Gerando ZIP… ${zipProg ?? ""}` : "↓ Todos (ZIP)"}</button>
             </div>
-            <button onClick={handleSalvar} style={{ ...ghostBtn, background: savedId ? "#1a3" : "transparent", color: savedId ? "#fff" : MUTED, border: `1px solid ${savedId ? "#1a3" : LINE}` }}>
-              {savedId ? "Salvo ✓" : "Salvar no dashboard"}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, color: OK }}>
+              <span style={{ fontSize: 9 }}>●</span>
+              <span>Salvo automaticamente no dashboard</span>
+            </div>
           </>
         )}
       </aside>
 
       {/* MAIN */}
       <main style={{ flex: 1, overflowY: "auto", padding: 28 }}>
-        {!temSlides ? (
+        {loading ? (
+          <div style={{ display: "flex", gap: 28, alignItems: "flex-start" }}>
+            <div style={{ flexShrink: 0 }}>
+              <div className="skeleton" style={{ width: 360, height: 360 * (DIM[marca.formato].h / DIM[marca.formato].w) }} />
+              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                {Array.from({ length: quantidade }).map((_, i) => (
+                  <div key={i} className="skeleton" style={{ width: 62, height: 62 * (DIM[marca.formato].h / DIM[marca.formato].w) }} />
+                ))}
+              </div>
+            </div>
+            <div style={{ flex: 1, maxWidth: 420, display: "flex", flexDirection: "column", gap: 12 }}>
+              <div className="skeleton" style={{ width: 140, height: 14 }} />
+              <div className="skeleton" style={{ width: "100%", height: 40 }} />
+              <div className="skeleton" style={{ width: "100%", height: 90 }} />
+              <div className="skeleton" style={{ width: "75%", height: 40 }} />
+              <p style={{ fontSize: 12, color: MUTED, margin: "4px 0 0" }}>Criando seus slides com IA…</p>
+            </div>
+          </div>
+        ) : !temSlides ? (
           <div style={{ height: "100%", minHeight: 400, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: MUTED }}>
             <div style={{ fontSize: 24, opacity: 0.3 }}>▦</div>
-            <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>Configure o tema e clique em Gerar com IA</p>
+            <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>Comece por um tema. A IA monta os slides; você refina.</p>
           </div>
         ) : (
           <div style={{ display: "flex", gap: 28, alignItems: "flex-start" }}>
 
-            {/* Preview grande + thumbs */}
-            <div style={{ flexShrink: 0 }}>
-              <div style={{ position: "relative" }}>
-                <ScaledSlide slide={atual} index={sel} total={slides.length} marca={marca} larguraAlvo={360} />
-                {regenIdx === sel && (
-                  <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600 }}>Regenerando...</div>
-                )}
+            {/* Preview grande (mesa de estúdio) + filmstrip — fixo enquanto o inspetor rola */}
+            <div style={{ flexShrink: 0, width: 416, position: "sticky", top: 0, alignSelf: "flex-start" }}>
+              <p style={{ ...eyebrow, fontSize: 14, color: MUTED, margin: "0 0 12px" }}>Prévia — slide {sel + 1} de {slides.length}</p>
+              <div className="stage" style={{ padding: 28, display: "flex", justifyContent: "center" }}>
+                <div style={{ position: "relative", boxShadow: "var(--shadow-slide)", borderRadius: 10 }}>
+                  <ScaledSlide slide={atual} index={sel} total={slides.length} marca={marca} larguraAlvo={360} />
+                  {regenIdx === sel && (
+                    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600 }}>Regenerando…</div>
+                  )}
+                </div>
               </div>
-              {/* thumbs */}
-              <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap", width: 360 }}>
-                {slides.map((s, i) => (
-                  <button key={i} onClick={() => setSel(i)} style={{ padding: 0, border: `2px solid ${i === sel ? FG : "transparent"}`, borderRadius: 8, background: "none", cursor: "pointer", lineHeight: 0 }}>
-                    <ScaledSlide slide={s} index={i} total={slides.length} marca={marca} larguraAlvo={62} />
-                  </button>
-                ))}
-                <button onClick={addSlide} style={{ width: 62, height: 62 * (DIM[marca.formato].h / DIM[marca.formato].w), border: `1px dashed ${LINE}`, borderRadius: 8, background: "none", color: MUTED, fontSize: 22, cursor: "pointer" }}>+</button>
+              {/* filmstrip — numerais circulares ecoam o número de página exportado */}
+              <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap", width: 416 }}>
+                {slides.map((s, i) => {
+                  const ativo = i === sel;
+                  return (
+                    <button key={i} onClick={() => setSel(i)} title={`Slide ${i + 1}`} style={{ position: "relative", padding: 0, border: `2px solid ${ativo ? ACCENT : LINE}`, borderRadius: 8, background: "none", cursor: "pointer", lineHeight: 0, overflow: "hidden" }}>
+                      <ScaledSlide slide={s} index={i} total={slides.length} marca={marca} larguraAlvo={62} />
+                      <span style={{ position: "absolute", left: 4, bottom: 4, width: 16, height: 16, borderRadius: "50%", background: ativo ? ACCENT : "rgba(0,0,0,0.62)", color: ativo ? BG : FG, fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{i + 1}</span>
+                    </button>
+                  );
+                })}
+                <button onClick={addSlide} title="Adicionar slide" style={{ width: 62, height: 62 * (DIM[marca.formato].h / DIM[marca.formato].w), border: `1px dashed ${LINE2}`, borderRadius: 8, background: "none", color: MUTED, fontSize: 22, cursor: "pointer" }}>+</button>
               </div>
             </div>
 
             {/* Editor do slide selecionado */}
             <div style={{ flex: 1, maxWidth: 420 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase", margin: 0 }}>Slide {sel + 1} de {slides.length}</p>
+                <p style={{ ...eyebrow }}>Slide {sel + 1} <span style={{ color: FAINT }}>/ {slides.length}</span></p>
                 <div style={{ display: "flex", gap: 6 }}>
                   <button onClick={() => mover(sel, -1)} disabled={sel === 0} style={iconBtn(sel === 0)}>←</button>
                   <button onClick={() => mover(sel, 1)} disabled={sel === slides.length - 1} style={iconBtn(sel === slides.length - 1)}>→</button>
@@ -503,6 +568,9 @@ export default function Gerar() {
         )}
       </main>
 
+      {/* Ofertas FAMOSO.® — aproveita o espaço à direita (some em telas estreitas) */}
+      <PromoRail />
+
       {/* Render full-size escondido para export */}
       <div style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }} aria-hidden>
         {slides.map((s, i) => (
@@ -511,6 +579,13 @@ export default function Gerar() {
           </div>
         ))}
       </div>
+
+      {undo && (
+        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", zIndex: 50 }}>
+          <span style={{ fontSize: 12, color: FG }}>{undo.msg}</span>
+          <button onClick={() => { undo.restore(); setUndo(null); }} style={{ fontSize: 12, fontWeight: 700, color: FG, background: "transparent", border: `1px solid ${FG}`, borderRadius: 5, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit" }}>Desfazer</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -536,7 +611,6 @@ function DecRow({ label, value, onChange }: { label: string; value: TextDec; onC
 
 const lblStyle: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 };
 const taStyle: React.CSSProperties = { width: "100%", background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "9px 11px", fontSize: 12, color: FG, resize: "none", outline: "none", lineHeight: 1.55, fontFamily: "inherit", boxSizing: "border-box" };
-const inStyle: React.CSSProperties = { width: "100%", background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "9px 11px", fontSize: 12, color: FG, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
 
 function primaryBtn(disabled: boolean): React.CSSProperties {
   return { width: "100%", padding: "10px 0", background: disabled ? "rgba(237,237,237,0.2)" : FG, color: disabled ? MUTED : BG, border: "none", borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit" };

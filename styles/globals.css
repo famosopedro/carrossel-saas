@@ -56,12 +56,63 @@
   font-display: swap;
 }
 
+/* ── Tema escuro (padrão) ── */
 :root {
-  --bg: #0a0a0a;
-  --card: #1c1c1c;
+  --bg: #1c1c1c;
+  --surface: #222222;
+  --card: #2a2a2a;
   --fg: #ededed;
-  --muted: rgba(237, 237, 237, 0.5);
-  --line: rgba(237, 237, 237, 0.1);
+  --muted: rgba(237, 237, 237, 0.55);
+  --faint: rgba(237, 237, 237, 0.35);
+  --line: rgba(237, 237, 237, 0.10);
+  --line2: rgba(237, 237, 237, 0.20);
+  --accent: #ededed;
+  --danger: rgba(220, 80, 80, 0.85);
+  --ok: rgba(237, 237, 237, 0.65);
+  --btn-disabled: rgba(237, 237, 237, 0.18);
+  --stage-bg: radial-gradient(120% 90% at 50% 0%, #242424 0%, #1c1c1c 60%, #141414 100%);
+  --shadow-slide: 0 14px 44px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Tema claro — paleta de 6 cinzas para contraste preciso ── */
+/* Hierarquia: bg #f5f5f5 → surface #ebebeb → card #ffffff (elevado)   */
+/* Tinta: fg #0a0a0a (máx) · muted #7a7a7a · faint #a8a8a8             */
+/* Bordas: line #d0d0d0 (sutil) · line2 #b8b8b8                        */
+html[data-theme="light"] {
+  --bg: #f5f5f5;
+  --surface: #ebebeb;
+  --card: #ffffff;
+  --fg: #0a0a0a;
+  --muted: #7a7a7a;
+  --faint: #a8a8a8;
+  --line: #d0d0d0;
+  --line2: #b8b8b8;
+  --accent: #1a1a1a;
+  --danger: #c0392b;
+  --ok: #4a4a4a;
+  --btn-disabled: #c8c8c8;
+  --stage-bg: radial-gradient(120% 90% at 50% 0%, #e4e4e4 0%, #ebebeb 60%, #e0e0e0 100%);
+  --shadow-slide: 0 4px 24px rgba(0, 0, 0, 0.10);
+}
+
+/* ── Auto: segue sistema ── */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    --bg: #f5f5f5;
+    --surface: #ebebeb;
+    --card: #ffffff;
+    --fg: #0a0a0a;
+    --muted: #7a7a7a;
+    --faint: #a8a8a8;
+    --line: #d0d0d0;
+    --line2: #b8b8b8;
+    --accent: #1a1a1a;
+    --danger: #c0392b;
+    --ok: #4a4a4a;
+    --btn-disabled: #c8c8c8;
+    --stage-bg: radial-gradient(120% 90% at 50% 0%, #e4e4e4 0%, #ebebeb 60%, #e0e0e0 100%);
+    --shadow-slide: 0 4px 24px rgba(0, 0, 0, 0.10);
+  }
 }
 
 body {
@@ -82,4 +133,61 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #2a2a2a 0%, #333333 50%, #2a2a2a 100%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 8px;
+}
+
+/* Foco visível no teclado (a11y) */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* "Mesa de estúdio" — superfície texturizada onde o canvas descansa.
+   Grão + vinheta ecoam o próprio slide (assinatura: ferramenta = produto). */
+.stage {
+  position: relative;
+  background: var(--stage-bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  * { scroll-behavior: auto; }
+}
+
+/* Rail de ofertas só aparece quando há espaço (desktop largo) */
+@media (max-width: 1280px) {
+  .promo-rail { display: none !important; }
+}
+
+@keyframes promoFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.promo-fade { animation: promoFade 0.5s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .promo-fade { animation: none; }
 }

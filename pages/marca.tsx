@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { getMarca, saveMarca, FONTES, FONTES_SERIF, PESOS, DEFAULT_BRAND, SLIDE_DEFAULTS, type BrandConfig, type Slide } from "@/lib/storage";
+import { registrarFontesCustom, fileToDataUrl } from "@/lib/fonts";
 import SlideRender, { DIM } from "@/components/SlideRender";
-
-const BG = "#1c1c1c";
-const FG = "#ededed";
-const MUTED = "rgba(237,237,237,0.45)";
-const LINE = "rgba(237,237,237,0.1)";
-const CARD = "#232323";
+import PromoRail from "@/components/PromoRail";
+import { BG, FG, MUTED, LINE, CARD, OK, eyebrow } from "@/lib/ui";
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -114,13 +111,14 @@ function NumInput({ label, value, min, max, step, unit, onChange }: {
   );
 }
 
-async function loadCustomFont(file: File, style: "normal" | "italic" = "normal"): Promise<string> {
-  const buf = await file.arrayBuffer();
-  const fontName = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
-  const face = new FontFace(fontName, buf, { style, weight: "100 900" });
+// Carrega a fonte pro preview imediato E devolve o dataUrl pra persistir na marca.
+async function loadCustomFont(file: File, style: "normal" | "italic" = "normal"): Promise<{ name: string; dataUrl: string }> {
+  const dataUrl = await fileToDataUrl(file);
+  const name = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+  const face = new FontFace(name, `url(${dataUrl})`, { style, weight: "100 900" });
   await face.load();
   document.fonts.add(face);
-  return fontName;
+  return { name, dataUrl };
 }
 
 export default function MarcaPage() {
@@ -133,7 +131,13 @@ export default function MarcaPage() {
   const fonteSansRef = useRef<HTMLInputElement>(null);
   const fonteSerifRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setMarca(getMarca()); }, []);
+  useEffect(() => {
+    const m = getMarca();
+    setMarca(m);
+    registrarFontesCustom(m);
+    setCustomFontes((m.customFonts || []).filter((f) => f.style === "normal").map((f) => f.name));
+    setCustomFontesSerif((m.customFonts || []).filter((f) => f.style === "italic").map((f) => f.name));
+  }, []);
 
   function set<K extends keyof BrandConfig>(key: K, value: BrandConfig[K]) {
     setMarca((prev) => ({ ...prev, [key]: value }));
@@ -141,7 +145,11 @@ export default function MarcaPage() {
   }
 
   function handleSave() {
-    saveMarca(marca);
+    const ok = saveMarca(marca);
+    if (!ok) {
+      alert("Não foi possível salvar — o armazenamento do navegador está cheio. Remova fontes ou logos pesados e tente de novo.");
+      return;
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -169,28 +177,37 @@ export default function MarcaPage() {
   async function handleUploadSans(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const name = await loadCustomFont(file, "normal");
+    const { name, dataUrl } = await loadCustomFont(file, "normal");
     setCustomFontes((prev) => prev.includes(name) ? prev : [...prev, name]);
-    set("fonte", name);
+    setMarca((prev) => {
+      const outras = (prev.customFonts || []).filter((f) => !(f.name === name && f.style === "normal"));
+      return { ...prev, fonte: name, customFonts: [...outras, { name, dataUrl, style: "normal" }] };
+    });
+    setSaved(false);
     e.target.value = "";
   }
 
   async function handleUploadSerif(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const name = await loadCustomFont(file, "italic");
+    const { name, dataUrl } = await loadCustomFont(file, "italic");
     setCustomFontesSerif((prev) => prev.includes(name) ? prev : [...prev, name]);
-    set("fonteSerif", name);
+    setMarca((prev) => {
+      const outras = (prev.customFonts || []).filter((f) => !(f.name === name && f.style === "italic"));
+      return { ...prev, fonteSerif: name, customFonts: [...outras, { name, dataUrl, style: "italic" }] };
+    });
+    setSaved(false);
     e.target.value = "";
   }
 
   return (
-    <div style={{ background: BG, minHeight: "calc(100vh - 52px)", color: FG }}>
-      <div style={{ maxWidth: 860, margin: "0 auto", padding: "40px 28px", display: "grid", gridTemplateColumns: "1fr 320px", gap: 48, alignItems: "start" }}>
+    <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
+      <div style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+        <div style={{ maxWidth: 860, margin: "0 auto", padding: "40px 28px", display: "grid", gridTemplateColumns: "1fr 320px", gap: 48, alignItems: "start" }}>
 
         {/* Form */}
         <div>
-          <p style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 28 }}>
+          <p style={{ ...eyebrow, fontSize: 20, marginBottom: 28 }}>
             Identidade da marca
           </p>
 
@@ -419,7 +436,7 @@ export default function MarcaPage() {
             onClick={handleSave}
             style={{
               padding: "11px 28px",
-              background: saved ? "#2a5" : FG,
+              background: saved ? OK : FG,
               color: BG,
               border: "none",
               borderRadius: 6,
@@ -436,7 +453,7 @@ export default function MarcaPage() {
 
         {/* Preview */}
         <div style={{ position: "sticky", top: 80 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 }}>
+          <p style={{ ...eyebrow, fontSize: 16, marginBottom: 16 }}>
             Preview
           </p>
           <SlidePreview marca={marca} />
@@ -463,7 +480,9 @@ export default function MarcaPage() {
           </button>
         </div>
 
+        </div>
       </div>
+      <PromoRail />
     </div>
   );
 }

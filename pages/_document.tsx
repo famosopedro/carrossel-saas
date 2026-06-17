@@ -12,6 +12,8 @@ export default function Document() {
         />
       </Head>
       <body>
+        {/* Aplica data-theme antes do React hidratar — evita flash */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('famoso_theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);})();` }} />
         <Main />
         <NextScript />
       </body>

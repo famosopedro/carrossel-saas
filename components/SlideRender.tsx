@@ -157,7 +157,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
         bottom: imgPos === "base" && slide.imagem ? dim.h * 0.52 : undefined,
         display: "flex", flexDirection: "column",
       }}>
-        <div style={{ lineHeight: 0, marginBottom: slide.tipo === "capa" ? 208 : 128 }}>
+        <div style={{ lineHeight: 0, marginBottom: slide.tipo === "capa" ? 208 : 128, alignSelf: "flex-start" }}>
           <Logo size={slide.tipo === "capa" ? 76 : 52} color={corTexto} marca={marca} fontSans={fontSans} />
         </div>
         <h1 style={{ color: corTexto, fontSize: marca.tituloTamanho, fontWeight: marca.tituloPeso, lineHeight: marca.tituloEntreLinhas, letterSpacing: `${marca.tituloEntreLetras}em`, margin: 0, textDecoration: slide.tituloDecoracao !== "none" ? slide.tituloDecoracao : undefined }}>

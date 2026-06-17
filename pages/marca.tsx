@@ -275,16 +275,18 @@ export default function MarcaPage() {
 
     if (Object.keys(extraConfig).length === 0) return;
 
-    // Atualiza o perfil com os dados extraídos e recarrega o form
+    // Atualiza o form independente de storage
     const configFinal: BrandConfig = { ...configInicial, ...extraConfig };
+    setMarca(configFinal);
+    setSaved(false);
+
+    // Tenta persistir
     const perfisSalvos = getPerfis();
     const idx = perfisSalvos.findIndex(p => p.id === id);
     if (idx >= 0) {
       perfisSalvos[idx] = { ...perfisSalvos[idx], nome: configFinal.nomeMarca || nome, config: configFinal };
       savePerfis(perfisSalvos);
       setPerfis([...perfisSalvos]);
-      setMarca(configFinal);
-      setSaved(false);
     }
   }
 

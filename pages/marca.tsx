@@ -193,7 +193,8 @@ export default function MarcaPage() {
           const base64 = dataUrl.split(",")[1];
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), 45000);
-          const resp = await fetch(`${apiOrigin}${router.basePath}/api/analisar-marca`, {
+          const apiUrl = `${apiOrigin}${router.basePath}/api/analisar-marca`;
+          const resp = await fetch(apiUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ base64, mimeType: arquivo.type }),
@@ -211,7 +212,7 @@ export default function MarcaPage() {
           }
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
-          setErroAnalise(msg.includes("abort") ? `Tempo esgotado: "${arquivo.name.slice(0, 20)}"` : msg);
+          setErroAnalise(msg.includes("abort") ? `Tempo esgotado: "${arquivo.name.slice(0, 20)}"` : `${msg} → ${apiUrl}`);
         }
       }
       setAnalisando(false);

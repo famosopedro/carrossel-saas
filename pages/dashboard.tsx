@@ -1,12 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { getCarrosseis, deleteCarrossel, type Carrossel } from "@/lib/storage";
-
-const BG = "#1c1c1c";
-const FG = "#ededed";
-const MUTED = "rgba(237,237,237,0.45)";
-const LINE = "rgba(237,237,237,0.1)";
-const CARD = "#232323";
+import { getCarrosseis, deleteCarrossel, saveCarrossel, type Carrossel } from "@/lib/storage";
+import PromoRail from "@/components/PromoRail";
+import { BG, FG, MUTED, LINE, CARD, eyebrow } from "@/lib/ui";
 
 function formatDate(ts: number) {
   return new Date(ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
@@ -15,29 +11,42 @@ function formatDate(ts: number) {
 export default function Dashboard() {
   const router = useRouter();
   const [carrosseis, setCarrosseis] = useState<Carrossel[]>([]);
+  const [undo, setUndo] = useState<Carrossel | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setCarrosseis(getCarrosseis()); }, []);
 
-  function handleDelete(id: string) {
-    deleteCarrossel(id);
-    setCarrosseis((prev) => prev.filter((c) => c.id !== id));
+  function handleDelete(c: Carrossel) {
+    deleteCarrossel(c.id);
+    setCarrosseis((prev) => prev.filter((x) => x.id !== c.id));
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndo(c);
+    undoTimer.current = setTimeout(() => setUndo(null), 5000);
+  }
+
+  function desfazerDelete() {
+    if (!undo) return;
+    saveCarrossel(undo);
+    setCarrosseis(getCarrosseis());
+    setUndo(null);
   }
 
   return (
-    <div style={{ background: BG, minHeight: "calc(100vh - 52px)", color: FG, padding: "36px 28px" }}>
-      <div style={{ maxWidth: 800, margin: "0 auto" }}>
+    <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
+      <div style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: "36px 28px" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto" }}>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
           <div>
-            <p style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px" }}>
+            <p style={{ ...eyebrow, fontSize: 14, color: MUTED, margin: "0 0 4px" }}>
               Dashboard
             </p>
-            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>
-              Carrosseis salvos
+            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>
+              Carrosséis salvos
             </h1>
           </div>
           <button
-            onClick={() => router.push("/gerar")}
+            onClick={() => router.push("/gerar?new=1")}
             style={{
               padding: "9px 18px",
               background: FG,
@@ -66,9 +75,9 @@ export default function Dashboard() {
             color: MUTED,
           }}>
             <div style={{ fontSize: 24, opacity: 0.3 }}>▦</div>
-            <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>Nenhum carrossel salvo ainda</p>
+            <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>Seus carrosséis aparecem aqui</p>
             <button
-              onClick={() => router.push("/gerar")}
+              onClick={() => router.push("/gerar?new=1")}
               style={{
                 marginTop: 8,
                 padding: "7px 16px",
@@ -139,7 +148,8 @@ export default function Dashboard() {
                   </button>
 
                   <button
-                    onClick={() => handleDelete(c.id)}
+                    onClick={() => handleDelete(c)}
+                    title="Apagar carrossel"
                     style={{
                       padding: "5px 10px",
                       background: "transparent",
@@ -159,7 +169,16 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+        </div>
       </div>
+      <PromoRail />
+
+      {undo && (
+        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", zIndex: 50 }}>
+          <span style={{ fontSize: 12, color: FG }}>Carrossel apagado</span>
+          <button onClick={desfazerDelete} style={{ fontSize: 12, fontWeight: 700, color: FG, background: "transparent", border: `1px solid ${FG}`, borderRadius: 5, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit" }}>Desfazer</button>
+        </div>
+      )}
     </div>
   );
 }

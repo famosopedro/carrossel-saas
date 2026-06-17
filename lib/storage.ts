@@ -28,7 +28,10 @@ export type BrandConfig = {
   serifEntreLinhas: number;
   rodapeTexto: string;
   assets: string[];
+  customFonts: CustomFont[];
 };
+
+export type CustomFont = { name: string; dataUrl: string; style: "normal" | "italic" };
 
 export type SlideTipo = "capa" | "conteudo" | "cta";
 
@@ -82,6 +85,7 @@ export const DEFAULT_BRAND: BrandConfig = {
   serifEntreLinhas: 1.25,
   rodapeTexto: "",
   assets: [],
+  customFonts: [],
 };
 
 export const SLIDE_DEFAULTS: Pick<Slide, "layout" | "splitRatio" | "tituloDecoracao" | "corpoDecoracao" | "serifDecoracao" | "imagem" | "imagemPos" | "imagemOpacidade"> = {
@@ -118,8 +122,19 @@ export function getMarca(): BrandConfig {
   }
 }
 
-export function saveMarca(config: BrandConfig): void {
-  localStorage.setItem("famoso_marca", JSON.stringify(config));
+// true = salvou; false = falhou (ex: quota cheia)
+export function saveMarca(config: BrandConfig): boolean {
+  try {
+    localStorage.setItem("famoso_marca", JSON.stringify(config));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isMarcaConfigurada(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem("famoso_marca") != null;
 }
 
 export function getCarrosseis(): Carrossel[] {
@@ -132,15 +147,34 @@ export function getCarrosseis(): Carrossel[] {
   }
 }
 
-export function saveCarrossel(c: Carrossel): void {
+export function getCarrossel(id: string): Carrossel | undefined {
+  return getCarrosseis().find((c) => c.id === id);
+}
+
+export function saveCarrossel(c: Carrossel): boolean {
   const list = getCarrosseis();
   const idx = list.findIndex((x) => x.id === c.id);
   if (idx >= 0) list[idx] = c;
   else list.unshift(c);
-  localStorage.setItem("famoso_carrosseis", JSON.stringify(list.slice(0, 50)));
+  try {
+    localStorage.setItem("famoso_carrosseis", JSON.stringify(list.slice(0, 50)));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function deleteCarrossel(id: string): void {
   const list = getCarrosseis().filter((c) => c.id !== id);
   localStorage.setItem("famoso_carrosseis", JSON.stringify(list));
+}
+
+// id do último carrossel aberto/editado — pra retomar rascunho ao voltar pro /gerar
+export function getUltimoId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("famoso_ultimo_id");
+}
+
+export function setUltimoId(id: string): void {
+  try { localStorage.setItem("famoso_ultimo_id", id); } catch {}
 }

@@ -13,12 +13,17 @@ export async function exportSlidePng(node: HTMLElement, nome: string) {
   a.click();
 }
 
-export async function exportAllZip(nodes: HTMLElement[], nomeBase: string) {
+export async function exportAllZip(
+  nodes: HTMLElement[],
+  nomeBase: string,
+  onProgress?: (feito: number, total: number) => void
+) {
   const zip = new JSZip();
   for (let i = 0; i < nodes.length; i++) {
     const dataUrl = await nodeToPng(nodes[i]);
     const base64 = dataUrl.split(",")[1];
     zip.file(`slide-${String(i + 1).padStart(2, "0")}.png`, base64, { base64: true });
+    onProgress?.(i + 1, nodes.length);
   }
   const blob = await zip.generateAsync({ type: "blob" });
   const a = document.createElement("a");

@@ -44,6 +44,32 @@ function RichText({ text, baseStyle }: { text: string; baseStyle: React.CSSPrope
   );
 }
 
+type TemaT = (typeof TEMAS)[Tema];
+
+function Logo({ size, color, marca, fontSans }: { size: number; color: string; marca: BrandConfig; fontSans: string }) {
+  return marca.logo ? (
+    <img src={marca.logo} alt="" style={{ height: size * 1.1, objectFit: "contain" }} />
+  ) : (
+    <span style={{ fontFamily: fontSans, fontWeight: 800, fontSize: size, letterSpacing: "-0.03em", color, lineHeight: 0.92 }}>
+      {marca.nomeMarca}
+    </span>
+  );
+}
+
+function Footer({ temaRodape, slide, marca, fontSerif, corTexto, index }: { temaRodape: TemaT; slide: Slide; marca: BrandConfig; fontSerif: string; corTexto: string; index: number }) {
+  const cor = slide.textoClaro != null ? corTexto : temaRodape.fg;
+  return (
+    <div style={{ position: "absolute", left: 96, right: 96, bottom: 80, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <span style={{ fontFamily: fontSerif, fontStyle: "italic", fontSize: 32, color: cor, opacity: 0.85 }}>
+        {marca.rodapeTexto || `${marca.url}//`}
+      </span>
+      <span style={{ width: 54, height: 54, borderRadius: "50%", border: `2px solid ${cor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 600, color: cor }}>
+        {index + 1}
+      </span>
+    </div>
+  );
+}
+
 type Props = { slide: Slide; index: number; total: number; marca: BrandConfig };
 
 const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
@@ -56,7 +82,6 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
   const temaPrincipal = TEMAS[slide.tema || marca.tema];
   const corTexto = slide.textoClaro != null ? (slide.textoClaro ? TEMAS.dark.fg : TEMAS.light.fg) : temaPrincipal.fg;
   const corSub   = slide.textoClaro != null ? (slide.textoClaro ? TEMAS.dark.sub : TEMAS.light.sub) : temaPrincipal.sub;
-  const temaSecundario = TEMAS[slide.tema === "light" ? "dark" : "light"];
   // split: topo sempre dark, base sempre light
   const temaTop = isSplit ? TEMAS["dark"] : temaPrincipal;
   const temaBot = isSplit ? TEMAS["light"] : temaPrincipal;
@@ -66,31 +91,6 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
 
   const topH = Math.round(dim.h * ratio);
   const botH = dim.h - topH;
-
-  const Logo = ({ size, color }: { size: number; color: string }) =>
-    marca.logo ? (
-      <img src={marca.logo} alt="" style={{ height: size * 1.1, objectFit: "contain" }} />
-    ) : (
-      <span style={{ fontFamily: fontSans, fontWeight: 800, fontSize: size, letterSpacing: "-0.03em", color, lineHeight: 0.92 }}>
-        {marca.nomeMarca}
-      </span>
-    );
-
-
-  // rodapé
-  const Footer = ({ temaRodape }: { temaRodape: typeof temaPrincipal }) => {
-    const cor = slide.textoClaro != null ? corTexto : temaRodape.fg;
-    return (
-      <div style={{ position: "absolute", left: 96, right: 96, bottom: 80, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontFamily: fontSerif, fontStyle: "italic", fontSize: 32, color: cor, opacity: 0.85 }}>
-          {marca.rodapeTexto || `${marca.url}//`}
-        </span>
-        <span style={{ width: 54, height: 54, borderRadius: "50%", border: `2px solid ${cor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 600, color: cor }}>
-          {index + 1}
-        </span>
-      </div>
-    );
-  };
 
   if (isSplit) {
     return (
@@ -119,7 +119,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
               </p>
             )}
           </div>
-          <Footer temaRodape={temaBot} />
+          <Footer temaRodape={temaBot} slide={slide} marca={marca} fontSerif={fontSerif} corTexto={corTexto} index={index} />
         </div>
       </div>
     );
@@ -145,7 +145,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
 
       {slide.tipo === "capa" && (
         <div style={{ position: "absolute", top: 96, left: 96 }}>
-          <Logo size={76} color={corTexto} />
+          <Logo size={76} color={corTexto} marca={marca} fontSans={fontSans} />
         </div>
       )}
 
@@ -180,11 +180,11 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
 
       {slide.tipo === "cta" && (
         <div style={{ position: "absolute", left: 90, bottom: 150, lineHeight: 0 }}>
-          <Logo size={150} color={temaPrincipal.fg} />
+          <Logo size={150} color={temaPrincipal.fg} marca={marca} fontSans={fontSans} />
         </div>
       )}
 
-      <Footer temaRodape={temaPrincipal} />
+      <Footer temaRodape={temaPrincipal} slide={slide} marca={marca} fontSerif={fontSerif} corTexto={corTexto} index={index} />
     </div>
   );
 });

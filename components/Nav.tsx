@@ -44,7 +44,7 @@ function applyTheme(t: Theme) {
 }
 
 export default function Nav() {
-  const { pathname } = useRouter();
+  const { pathname, basePath } = useRouter();
   const [theme, setThemeState] = useState<Theme>("dark");
 
   useEffect(() => {
@@ -83,11 +83,11 @@ export default function Nav() {
           height: 16,
           width: 104,
           backgroundColor: FG,
-          WebkitMaskImage: "url(/logo-horizontal.svg)",
+          WebkitMaskImage: `url(${basePath}/logo-horizontal.svg)`,
           WebkitMaskRepeat: "no-repeat",
           WebkitMaskSize: "contain",
           WebkitMaskPosition: "left center",
-          maskImage: "url(/logo-horizontal.svg)",
+          maskImage: `url(${basePath}/logo-horizontal.svg)`,
           maskRepeat: "no-repeat",
           maskSize: "contain",
           maskPosition: "left center",

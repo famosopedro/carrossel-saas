@@ -1,0 +1,469 @@
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
+import { getMarca, saveMarca, FONTES, FONTES_SERIF, PESOS, DEFAULT_BRAND, SLIDE_DEFAULTS, type BrandConfig, type Slide } from "@/lib/storage";
+import SlideRender, { DIM } from "@/components/SlideRender";
+
+const BG = "#1c1c1c";
+const FG = "#ededed";
+const MUTED = "rgba(237,237,237,0.45)";
+const LINE = "rgba(237,237,237,0.1)";
+const CARD = "#232323";
+
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase" as const, marginBottom: 8 }}>
+      {children}
+    </label>
+  );
+}
+
+function Field({ children }: { children: React.ReactNode }) {
+  return <div style={{ marginBottom: 24 }}>{children}</div>;
+}
+
+function TextInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      style={{
+        width: "100%",
+        background: CARD,
+        border: `1px solid ${LINE}`,
+        borderRadius: 6,
+        padding: "9px 12px",
+        fontSize: 13,
+        color: FG,
+        outline: "none",
+        fontFamily: "inherit",
+      }}
+    />
+  );
+}
+
+const PREVIEW_SLIDE: Slide = {
+  tipo: "capa",
+  titulo: "Sua marca pode estar te custando dinheiro.",
+  corpo: "",
+  subtitulo: "E o pior: talvez você ainda não tenha medido quanto.",
+  ...SLIDE_DEFAULTS,
+};
+
+function SlidePreview({ marca }: { marca: BrandConfig }) {
+  const dim = DIM[marca.formato] || DIM.vertical;
+  const largura = 300;
+  const escala = largura / dim.w;
+  return (
+    <div style={{ width: largura, height: dim.h * escala, overflow: "hidden", borderRadius: 10 }}>
+      <div style={{ transform: `scale(${escala})`, transformOrigin: "top left" }}>
+        <SlideRender slide={PREVIEW_SLIDE} index={0} total={5} marca={marca} />
+      </div>
+    </div>
+  );
+}
+
+// Slider normal (espaçamento)
+function SliderField({ label, value, min, max, step, fmt, onChange }: {
+  label: string; value: number; min: number; max: number; step: number;
+  fmt: (v: number) => string; onChange: (v: number) => void;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <span style={{ fontSize: 11, color: MUTED, width: 88, flexShrink: 0 }}>{label}</span>
+      <input
+        type="range" min={min} max={max} step={step} value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        style={{ flex: 1, accentColor: FG, cursor: "pointer" }}
+      />
+      <span style={{ fontSize: 11, fontFamily: "monospace", color: FG, width: 68, textAlign: "right", flexShrink: 0 }}>
+        {fmt(value)}
+      </span>
+    </div>
+  );
+}
+
+// Input numérico estilo design software (↑↓ + digitação)
+function NumInput({ label, value, min, max, step, unit, onChange }: {
+  label: string; value: number; min: number; max: number; step: number;
+  unit?: string; onChange: (v: number) => void;
+}) {
+  const clamp = (v: number) => Math.min(max, Math.max(min, v));
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <span style={{ fontSize: 11, color: MUTED, width: 44, flexShrink: 0 }}>{label}</span>
+      <div style={{ display: "flex", alignItems: "center", background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, overflow: "hidden", height: 32 }}>
+        <input
+          type="number" value={value} min={min} max={max} step={step}
+          onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onChange(clamp(v)); }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowUp") { e.preventDefault(); onChange(clamp(parseFloat((value + step).toFixed(10))));  }
+            if (e.key === "ArrowDown") { e.preventDefault(); onChange(clamp(parseFloat((value - step).toFixed(10)))); }
+          }}
+          style={{ width: 52, background: "transparent", border: "none", outline: "none", color: FG, fontSize: 13, fontWeight: 600, fontFamily: "monospace", padding: "0 6px", textAlign: "right", MozAppearance: "textfield" } as React.CSSProperties}
+        />
+        {unit && <span style={{ fontSize: 11, color: MUTED, paddingRight: 8, paddingLeft: 2 }}>{unit}</span>}
+        <div style={{ display: "flex", flexDirection: "column", borderLeft: `1px solid ${LINE}`, height: "100%" }}>
+          <button onClick={() => onChange(clamp(parseFloat((value + step).toFixed(10))))} style={{ flex: 1, width: 22, background: "transparent", border: "none", cursor: "pointer", color: MUTED, fontSize: 9, lineHeight: 1, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>▲</button>
+          <div style={{ height: 1, background: LINE }} />
+          <button onClick={() => onChange(clamp(parseFloat((value - step).toFixed(10))))} style={{ flex: 1, width: 22, background: "transparent", border: "none", cursor: "pointer", color: MUTED, fontSize: 9, lineHeight: 1, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>▼</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function loadCustomFont(file: File, style: "normal" | "italic" = "normal"): Promise<string> {
+  const buf = await file.arrayBuffer();
+  const fontName = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+  const face = new FontFace(fontName, buf, { style, weight: "100 900" });
+  await face.load();
+  document.fonts.add(face);
+  return fontName;
+}
+
+export default function MarcaPage() {
+  const router = useRouter();
+  const [marca, setMarca] = useState<BrandConfig>(DEFAULT_BRAND);
+  const [saved, setSaved] = useState(false);
+  const [customFontes, setCustomFontes] = useState<string[]>([]);
+  const [customFontesSerif, setCustomFontesSerif] = useState<string[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const fonteSansRef = useRef<HTMLInputElement>(null);
+  const fonteSerifRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setMarca(getMarca()); }, []);
+
+  function set<K extends keyof BrandConfig>(key: K, value: BrandConfig[K]) {
+    setMarca((prev) => ({ ...prev, [key]: value }));
+    setSaved(false);
+  }
+
+  function handleSave() {
+    saveMarca(marca);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  function handleLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const current = marca.logos || [];
+    const slots = 5 - current.length;
+    files.slice(0, slots).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const src = ev.target?.result as string;
+        setMarca((prev) => {
+          const next = [...(prev.logos || []), src].slice(0, 5);
+          return { ...prev, logos: next, logo: prev.logo || src };
+        });
+        setSaved(false);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  }
+
+  async function handleUploadSans(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const name = await loadCustomFont(file, "normal");
+    setCustomFontes((prev) => prev.includes(name) ? prev : [...prev, name]);
+    set("fonte", name);
+    e.target.value = "";
+  }
+
+  async function handleUploadSerif(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const name = await loadCustomFont(file, "italic");
+    setCustomFontesSerif((prev) => prev.includes(name) ? prev : [...prev, name]);
+    set("fonteSerif", name);
+    e.target.value = "";
+  }
+
+  return (
+    <div style={{ background: BG, minHeight: "calc(100vh - 52px)", color: FG }}>
+      <div style={{ maxWidth: 860, margin: "0 auto", padding: "40px 28px", display: "grid", gridTemplateColumns: "1fr 320px", gap: 48, alignItems: "start" }}>
+
+        {/* Form */}
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 28 }}>
+            Identidade da marca
+          </p>
+
+          <Field>
+            <Label>Nome da marca</Label>
+            <TextInput value={marca.nomeMarca} onChange={(v) => set("nomeMarca", v)} placeholder="Ex: FAMOSO." />
+          </Field>
+
+          <Field>
+            <Label>URL / site (rodapé)</Label>
+            <TextInput value={marca.url} onChange={(v) => set("url", v)} placeholder="famosopedro.com.br" />
+          </Field>
+
+          <Field>
+            <Label>Texto do rodapé <span style={{ textTransform: "none", fontWeight: 400, color: MUTED }}>— opcional</span></Label>
+            <TextInput value={marca.rodapeTexto} onChange={(v) => set("rodapeTexto", v)} placeholder={`${marca.url || "famosopedro.com.br"}//`} />
+            <p style={{ fontSize: 11, color: MUTED, margin: "6px 0 0" }}>
+              Vazio = usa URL com //. Ex: <em>@famosopedro</em> ou <em>Link na bio →</em>
+            </p>
+          </Field>
+
+          <Field>
+            <Label>Tema padrão</Label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {([["dark", "Dark"], ["light", "Light"]] as const).map(([v, lbl]) => (
+                <button key={v} onClick={() => set("tema", v)} style={{ flex: 1, padding: "9px 0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: marca.tema === v ? FG : CARD, color: marca.tema === v ? BG : MUTED, border: `1px solid ${marca.tema === v ? FG : LINE}` }}>{lbl}</button>
+              ))}
+            </div>
+          </Field>
+
+          <Field>
+            <Label>Formato</Label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {([["vertical", "Vertical 4:5"], ["quadrado", "Quadrado 1:1"]] as const).map(([v, lbl]) => (
+                <button key={v} onClick={() => set("formato", v)} style={{ flex: 1, padding: "9px 0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: marca.formato === v ? FG : CARD, color: marca.formato === v ? BG : MUTED, border: `1px solid ${marca.formato === v ? FG : LINE}` }}>{lbl}</button>
+              ))}
+            </div>
+          </Field>
+
+          <Field>
+            <Label>Fonte dos títulos</Label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {[...FONTES, ...customFontes].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => set("fonte", f)}
+                  style={{
+                    padding: "8px 0",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontFamily: `'${f}', sans-serif`,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    background: marca.fonte === f ? FG : CARD,
+                    color: marca.fonte === f ? BG : MUTED,
+                    border: `1px solid ${marca.fonte === f ? FG : LINE}`,
+                    transition: "all 0.1s",
+                  }}
+                >
+                  {f}
+                </button>
+              ))}
+              <button
+                onClick={() => fonteSansRef.current?.click()}
+                style={{ padding: "8px 0", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", background: "transparent", color: MUTED, border: `1px dashed ${LINE}`, transition: "all 0.1s", letterSpacing: "0.04em" }}
+              >
+                + Subir fonte
+              </button>
+              <input ref={fonteSansRef} type="file" accept=".ttf,.otf,.woff,.woff2" style={{ display: "none" }} onChange={handleUploadSans} />
+            </div>
+          </Field>
+
+          <Field>
+            <Label>Fonte serif <span style={{ textTransform: "none", fontWeight: 400, color: MUTED }}>— subtítulo itálico</span></Label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {[...FONTES_SERIF, ...customFontesSerif].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => set("fonteSerif", f)}
+                  style={{
+                    padding: "8px 0",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontFamily: `'${f}', serif`,
+                    fontStyle: "italic",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    background: marca.fonteSerif === f ? FG : CARD,
+                    color: marca.fonteSerif === f ? BG : MUTED,
+                    border: `1px solid ${marca.fonteSerif === f ? FG : LINE}`,
+                    transition: "all 0.1s",
+                  }}
+                >
+                  {f}
+                </button>
+              ))}
+              <button
+                onClick={() => fonteSerifRef.current?.click()}
+                style={{ padding: "8px 0", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", background: "transparent", color: MUTED, border: `1px dashed ${LINE}`, transition: "all 0.1s", letterSpacing: "0.04em" }}
+              >
+                + Subir fonte
+              </button>
+              <input ref={fonteSerifRef} type="file" accept=".ttf,.otf,.woff,.woff2" style={{ display: "none" }} onChange={handleUploadSerif} />
+            </div>
+            <p style={{ fontSize: 11, color: MUTED, margin: "8px 0 0" }}>
+              Aparece no subtítulo em itálico abaixo da divisória em cada slide.
+            </p>
+          </Field>
+
+          <Field>
+            <Label>Tamanho das fontes <span style={{ textTransform: "none", fontWeight: 400, color: MUTED }}>— px na resolução 1080</span></Label>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" as const }}>
+              <NumInput label="Título" value={marca.tituloTamanho} min={48} max={160} step={2} unit="px" onChange={(v) => set("tituloTamanho", v)} />
+              <NumInput label="Corpo" value={marca.corpoTamanho} min={24} max={80} step={2} unit="px" onChange={(v) => set("corpoTamanho", v)} />
+              <NumInput label="Serif" value={marca.serifTamanho} min={24} max={80} step={2} unit="px" onChange={(v) => set("serifTamanho", v)} />
+            </div>
+          </Field>
+
+          <Field>
+            <Label>Peso das fontes</Label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {([["tituloPeso", "Título"], ["corpoPeso", "Corpo"], ["serifPeso", "Serif"]] as [keyof BrandConfig, string][]).map(([key, lbl]) => (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 11, color: MUTED, width: 44, flexShrink: 0 }}>{lbl}</span>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {PESOS.map((p) => (
+                      <button key={p} onClick={() => set(key, p as BrandConfig[typeof key])} style={{ padding: "5px 10px", borderRadius: 4, fontSize: 11, fontWeight: p, cursor: "pointer", fontFamily: "inherit", background: marca[key] === p ? FG : CARD, color: marca[key] === p ? BG : MUTED, border: `1px solid ${marca[key] === p ? FG : LINE}` }}>{p}</button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Field>
+
+          <Field>
+            <Label>Espaçamento — título</Label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <SliderField
+                label="Entrelinhas"
+                value={marca.tituloEntreLinhas}
+                min={0.8} max={1.6} step={0.01}
+                fmt={(v) => v.toFixed(2)}
+                onChange={(v) => set("tituloEntreLinhas", v)}
+              />
+              <SliderField
+                label="EntreLetras"
+                value={marca.tituloEntreLetras}
+                min={-0.1} max={0.1} step={0.005}
+                fmt={(v) => (v >= 0 ? "+" : "") + v.toFixed(3) + "em"}
+                onChange={(v) => set("tituloEntreLetras", v)}
+              />
+            </div>
+          </Field>
+
+          <Field>
+            <Label>Espaçamento — corpo</Label>
+            <SliderField
+              label="Entrelinhas"
+              value={marca.corpoEntreLinhas}
+              min={1.0} max={2.0} step={0.05}
+              fmt={(v) => v.toFixed(2)}
+              onChange={(v) => set("corpoEntreLinhas", v)}
+            />
+          </Field>
+
+          <Field>
+            <Label>Espaçamento — subtítulo serif</Label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <SliderField
+                label="Entrelinhas"
+                value={marca.serifEntreLinhas}
+                min={0.9} max={2.0} step={0.05}
+                fmt={(v) => v.toFixed(2)}
+                onChange={(v) => set("serifEntreLinhas", v)}
+              />
+              <SliderField
+                label="Entreletras"
+                value={marca.serifEntreLetras}
+                min={-0.05} max={0.1} step={0.005}
+                fmt={(v) => (v >= 0 ? "+" : "") + v.toFixed(3) + "em"}
+                onChange={(v) => set("serifEntreLetras", v)}
+              />
+            </div>
+          </Field>
+
+          <Field>
+            <Label>Logo (imagem — opcional, substitui o texto)</Label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {(marca.logos || []).map((src, i) => {
+                const ativo = marca.logo === src;
+                return (
+                  <div key={i} style={{ position: "relative" }}>
+                    <button
+                      onClick={() => set("logo", src)}
+                      style={{ width: "100%", height: 64, borderRadius: 6, cursor: "pointer", background: ativo ? FG : CARD, border: `1px solid ${ativo ? FG : LINE}`, display: "flex", alignItems: "center", justifyContent: "center", padding: 8, overflow: "hidden" }}
+                    >
+                      <img src={src} alt="" style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain", filter: ativo ? "invert(1)" : "none" }} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        const next = (marca.logos || []).filter((_, j) => j !== i);
+                        setMarca((prev) => ({ ...prev, logos: next, logo: prev.logo === src ? (next[0] || null) : prev.logo }));
+                        setSaved(false);
+                      }}
+                      style={{ position: "absolute", top: 3, right: 3, width: 16, height: 16, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "none", color: FG, fontSize: 9, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+              {(marca.logos || []).length < 5 && (
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  style={{ height: 64, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", background: "transparent", color: MUTED, border: `1px dashed ${LINE}`, letterSpacing: "0.04em" }}
+                >
+                  + Subir logo
+                </button>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleLogo} style={{ display: "none" }} />
+            <p style={{ fontSize: 11, color: MUTED, marginTop: 8 }}>PNG ou SVG com fundo transparente. Clique para ativar.</p>
+          </Field>
+
+          <button
+            onClick={handleSave}
+            style={{
+              padding: "11px 28px",
+              background: saved ? "#2a5" : FG,
+              color: BG,
+              border: "none",
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "background 0.2s",
+            }}
+          >
+            {saved ? "Salvo ✓" : "Salvar identidade"}
+          </button>
+        </div>
+
+        {/* Preview */}
+        <div style={{ position: "sticky", top: 80 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 }}>
+            Preview
+          </p>
+          <SlidePreview marca={marca} />
+          <p style={{ fontSize: 11, color: MUTED, marginTop: 12, lineHeight: 1.5 }}>
+            Assim ficará cada slide do carrossel com a identidade configurada.
+          </p>
+          <button
+            onClick={() => router.push("/gerar")}
+            style={{
+              marginTop: 16,
+              width: "100%",
+              padding: "9px 0",
+              background: "transparent",
+              color: MUTED,
+              border: `1px solid ${LINE}`,
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            Ir para Gerar →
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import Anthropic from "@anthropic-ai/sdk";
 
 export const config = {
-  api: { bodyParser: { sizeLimit: "10mb" } },
+  api: { bodyParser: { sizeLimit: "15mb" } },
 };
 
 const ALLOWED_ORIGINS = [

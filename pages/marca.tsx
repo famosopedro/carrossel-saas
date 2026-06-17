@@ -135,8 +135,9 @@ export default function MarcaPage() {
   const [perfilAtivoId, setPerfilAtivoIdState] = useState<string | null>(null);
   const [criandoNovo, setCriandoNovo] = useState(false);
   const [novoNome, setNovoNome] = useState("");
-  const [novoArquivo, setNovoArquivo] = useState<File | null>(null);
+  const [novoArquivos, setNovoArquivos] = useState<File[]>([]);
   const [analisando, setAnalisando] = useState(false);
+  const [analisandoIdx, setAnalisandoIdx] = useState(0);
   const [erroAnalise, setErroAnalise] = useState<string | null>(null);
   const novoFileRef = useRef<HTMLInputElement>(null);
 
@@ -170,46 +171,51 @@ export default function MarcaPage() {
 
     let extraConfig: Partial<BrandConfig> = {};
 
-    if (novoArquivo) {
-      if (novoArquivo.size > 3 * 1024 * 1024) {
-        setErroAnalise("Arquivo muito grande (máx 3 MB). Para PDFs, exporte uma página como PNG.");
+    if (novoArquivos.length > 0) {
+      const oversized = novoArquivos.find(f => f.size > 10 * 1024 * 1024);
+      if (oversized) {
+        setErroAnalise(`"${oversized.name.slice(0, 30)}" passa de 10 MB.`);
         return;
       }
       setAnalisando(true);
       setErroAnalise(null);
-      try {
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target?.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(novoArquivo);
-        });
-        const base64 = dataUrl.split(",")[1];
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 30000);
-        // Manda direto pro carrossel-saas (bypassa proxy do famoso-site que limita body a 4.5MB)
-        const apiOrigin = process.env.NEXT_PUBLIC_CARROSSEL_ORIGIN || "";
-        const resp = await fetch(`${apiOrigin}${router.basePath}/api/analisar-marca`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ base64, mimeType: novoArquivo.type }),
-          signal: controller.signal,
-        });
-        clearTimeout(timer);
-        const json = await resp.json();
-        if (json.ok && json.config) {
-          // filtra strings vazias pra não sobrescrever defaults
-          extraConfig = Object.fromEntries(
-            Object.entries(json.config).filter(([, v]) => v !== "" && v != null)
-          ) as Partial<BrandConfig>;
-        } else {
-          setErroAnalise(json.error || `Erro ${resp.status}`);
+      const apiOrigin = process.env.NEXT_PUBLIC_CARROSSEL_ORIGIN || "";
+      for (let i = 0; i < novoArquivos.length; i++) {
+        setAnalisandoIdx(i);
+        const arquivo = novoArquivos[i];
+        try {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(arquivo);
+          });
+          const base64 = dataUrl.split(",")[1];
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 45000);
+          const resp = await fetch(`${apiOrigin}${router.basePath}/api/analisar-marca`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ base64, mimeType: arquivo.type }),
+            signal: controller.signal,
+          });
+          clearTimeout(timer);
+          const json = await resp.json();
+          if (json.ok && json.config) {
+            const partial = Object.fromEntries(
+              Object.entries(json.config).filter(([, v]) => v !== "" && v != null)
+            ) as Partial<BrandConfig>;
+            extraConfig = { ...extraConfig, ...partial };
+          } else {
+            setErroAnalise(json.error || `Erro ${resp.status} em "${arquivo.name.slice(0, 20)}"`);
+          }
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          setErroAnalise(msg.includes("abort") ? `Tempo esgotado: "${arquivo.name.slice(0, 20)}"` : msg);
         }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        setErroAnalise(msg.includes("abort") ? "Tempo esgotado (30s)" : msg);
       }
       setAnalisando(false);
+      setAnalisandoIdx(0);
     }
 
     const config: BrandConfig = { ...DEFAULT_BRAND, nomeMarca: nome, ...extraConfig };
@@ -218,7 +224,7 @@ export default function MarcaPage() {
     savePerfis(ps);
     setPerfis(ps);
     setNovoNome("");
-    setNovoArquivo(null);
+    setNovoArquivos([]);
     setCriandoNovo(false);
     switchPerfil(id);
   }
@@ -364,37 +370,52 @@ export default function MarcaPage() {
               })}
               {criandoNovo ? (
                 <div style={{ display: "flex", flexDirection: "column" as const, gap: 8, padding: "10px 14px", background: CARD, border: `1px solid ${LINE}`, borderRadius: 8 }}>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" as const }}>
                     <input
                       autoFocus
                       value={novoNome}
                       onChange={(e) => setNovoNome(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") criarPerfil();
-                        if (e.key === "Escape") { setCriandoNovo(false); setNovoNome(""); setNovoArquivo(null); }
+                        if (e.key === "Escape") { setCriandoNovo(false); setNovoNome(""); setNovoArquivos([]); setErroAnalise(null); }
                       }}
                       placeholder="Nome da marca..."
                       style={{ padding: "6px 10px", border: `1px solid ${LINE}`, borderRadius: 6, background: BG, color: FG, fontSize: 12, outline: "none", fontFamily: "inherit", width: 160 }}
                     />
                     <button
                       onClick={() => novoFileRef.current?.click()}
-                      title="Subir identidade visual (PDF ou imagem) para preencher automaticamente"
+                      title="PDF ou imagem da identidade visual — Claude extrai nome, tema, fonte e URL"
                       style={{
                         padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer",
-                        background: novoArquivo ? FG : "transparent",
-                        color: novoArquivo ? BG : MUTED,
-                        border: `1px ${novoArquivo ? "solid" : "dashed"} ${novoArquivo ? FG : LINE}`,
+                        background: "transparent", color: MUTED,
+                        border: `1px dashed ${LINE}`,
                         fontFamily: "inherit", whiteSpace: "nowrap" as const,
                       }}
                     >
-                      {novoArquivo ? `✓ ${novoArquivo.name.slice(0, 20)}` : "＋ ID visual (PDF/img)"}
+                      ＋ Arquivos da marca
                     </button>
-                    <input ref={novoFileRef} type="file" accept=".pdf,image/*" style={{ display: "none" }} onChange={(e) => { setNovoArquivo(e.target.files?.[0] || null); e.target.value = ""; }} />
+                    <input
+                      ref={novoFileRef}
+                      type="file"
+                      accept=".pdf,image/*"
+                      multiple
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setNovoArquivos(prev => [...prev, ...files]);
+                        e.target.value = "";
+                      }}
+                    />
                   </div>
-                  {novoArquivo && (
-                    <p style={{ fontSize: 11, color: MUTED, margin: 0 }}>
-                      Claude vai ler o arquivo e pré-preencher nome, tema, fonte e URL da marca.
-                    </p>
+                  {novoArquivos.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6 }}>
+                      {novoArquivos.map((f, i) => (
+                        <span key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, background: BG, border: `1px solid ${LINE}`, borderRadius: 4, padding: "3px 8px", color: MUTED }}>
+                          {f.name.slice(0, 24)}{f.name.length > 24 ? "…" : ""} <span style={{ fontSize: 10, opacity: 0.5 }}>({(f.size / 1024 / 1024).toFixed(1)}MB)</span>
+                          <button onClick={() => setNovoArquivos(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: MUTED, fontSize: 10, padding: 0, lineHeight: 1, marginLeft: 2 }}>✕</button>
+                        </span>
+                      ))}
+                    </div>
                   )}
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <button
@@ -402,10 +423,10 @@ export default function MarcaPage() {
                       disabled={analisando || !novoNome.trim()}
                       style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: analisando ? "default" : "pointer", background: FG, color: BG, border: "none", fontFamily: "inherit", opacity: (!novoNome.trim() || analisando) ? 0.5 : 1 }}
                     >
-                      {analisando ? "Analisando..." : "Criar"}
+                      {analisando ? `Analisando ${analisandoIdx + 1}/${novoArquivos.length}…` : "Criar"}
                     </button>
                     <button
-                      onClick={() => { setCriandoNovo(false); setNovoNome(""); setNovoArquivo(null); setErroAnalise(null); }}
+                      onClick={() => { setCriandoNovo(false); setNovoNome(""); setNovoArquivos([]); setErroAnalise(null); }}
                       style={{ padding: "6px 10px", borderRadius: 6, fontSize: 12, cursor: "pointer", background: "transparent", color: MUTED, border: `1px solid ${LINE}`, fontFamily: "inherit" }}
                     >
                       Cancelar

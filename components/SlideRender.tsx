@@ -79,7 +79,12 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
   const dim = DIM[marca.formato] || DIM.vertical;
   const isSplit = slide.layout === "split";
   const ratio = slide.splitRatio ?? 0.58;
-  const temaPrincipal = TEMAS[slide.tema || marca.tema];
+  const temaBase = TEMAS[slide.tema || marca.tema];
+  const temaPrincipal = {
+    ...temaBase,
+    ...(marca.corFundo ? { bg: marca.corFundo, bgGrad: marca.corFundo } : {}),
+    ...(marca.corTexto ? { fg: marca.corTexto, sub: marca.corTexto, line: marca.corTexto + "55" } : {}),
+  };
   const corTexto = slide.textoClaro != null ? (slide.textoClaro ? TEMAS.dark.fg : TEMAS.light.fg) : temaPrincipal.fg;
   const corSub   = slide.textoClaro != null ? (slide.textoClaro ? TEMAS.dark.sub : TEMAS.light.sub) : temaPrincipal.sub;
   // split: topo sempre dark, base sempre light

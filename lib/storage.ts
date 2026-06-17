@@ -27,6 +27,9 @@ export type BrandConfig = {
   serifEntreLetras: number;
   serifEntreLinhas: number;
   rodapeTexto: string;
+  corFundo?: string;
+  corTexto?: string;
+  corAccent?: string;
   assets: string[];
   customFonts: CustomFont[];
 };

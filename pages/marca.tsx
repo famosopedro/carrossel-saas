@@ -563,6 +563,37 @@ export default function MarcaPage() {
           </Field>
 
           <Field>
+            <Label>Cores customizadas <span style={{ textTransform: "none", fontWeight: 400, color: MUTED }}>— substituem o tema dark/light</span></Label>
+            <div style={{ display: "flex", flexDirection: "column" as const, gap: 10 }}>
+              {([
+                ["corFundo", "Fundo"],
+                ["corTexto", "Texto"],
+                ["corAccent", "Destaque"],
+              ] as const).map(([key, label]) => (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 11, color: MUTED, width: 60, flexShrink: 0 }}>{label}</span>
+                  <input
+                    type="color"
+                    value={marca[key] || (key === "corFundo" ? "#1c1c1c" : key === "corTexto" ? "#ededed" : "#ffffff")}
+                    onChange={(e) => set(key, e.target.value)}
+                    style={{ width: 36, height: 28, border: `1px solid ${LINE}`, borderRadius: 4, cursor: "pointer", padding: 2, background: CARD }}
+                  />
+                  <input
+                    type="text"
+                    value={marca[key] || ""}
+                    onChange={(e) => { const v = e.target.value; if (!v || /^#[0-9a-fA-F]{0,6}$/.test(v)) set(key, v || undefined as unknown as string); }}
+                    placeholder="ex: #1a1a2e"
+                    style={{ flex: 1, background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "6px 10px", fontSize: 12, color: FG, outline: "none", fontFamily: "monospace" }}
+                  />
+                  {marca[key] && (
+                    <button onClick={() => set(key, undefined as unknown as string)} style={{ fontSize: 11, color: MUTED, background: "none", border: "none", cursor: "pointer", padding: 0 }}>✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Field>
+
+          <Field>
             <Label>Formato</Label>
             <div style={{ display: "flex", gap: 8 }}>
               {([["vertical", "Vertical 4:5"], ["quadrado", "Quadrado 1:1"]] as const).map(([v, lbl]) => (

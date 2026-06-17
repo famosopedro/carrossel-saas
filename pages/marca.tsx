@@ -272,7 +272,7 @@ export default function MarcaPage() {
       try {
         const { base64, mimeType: mt } = await comprimirParaBase64(arquivo);
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 45000);
+        const timer = setTimeout(() => controller.abort(), 90000);
         const resp = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

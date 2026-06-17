@@ -416,7 +416,7 @@ export default function Gerar() {
             </div>
 
             {/* Editor do slide selecionado */}
-            <div style={{ flex: 1, maxWidth: 420 }}>
+            <div style={{ flex: 1, maxWidth: 420, overflowY: "auto", maxHeight: "calc(100vh - 112px)", position: "sticky", top: 0 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <p style={{ ...eyebrow }}>Slide {sel + 1} <span style={{ color: FAINT }}>/ {slides.length}</span></p>
                 <div style={{ display: "flex", gap: 6 }}>
@@ -505,7 +505,7 @@ export default function Gerar() {
               ) : (
                 <button onClick={() => imgFileRef.current?.click()} style={{ ...ghostBtn, marginBottom: 12, fontSize: 11 }}>+ Adicionar imagem</button>
               )}
-              <input ref={imgFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
+              <input ref={imgFileRef} type="file" accept="image/*" style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 1, height: 1 }} onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 // comprime: canvas resize pra max 1080px

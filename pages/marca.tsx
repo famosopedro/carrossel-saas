@@ -257,10 +257,12 @@ export default function MarcaPage() {
         });
         clearTimeout(timer);
         const json = await resp.json();
+        console.log("[analisar-marca] resposta:", JSON.stringify(json));
         if (json.ok && json.config) {
           const partial = Object.fromEntries(
             Object.entries(json.config).filter(([, v]) => v !== "" && v != null)
           ) as Partial<BrandConfig>;
+          console.log("[analisar-marca] extraído:", JSON.stringify(partial));
           extraConfig = { ...extraConfig, ...partial };
         } else {
           setErroAnalise(json.error || `Erro ${resp.status}`);

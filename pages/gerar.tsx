@@ -123,7 +123,7 @@ export default function Gerar() {
     if (!tema.trim()) return;
     setLoading(true); setErro(null);
     try {
-      const res = await fetch("/api/gerar", {
+      const res = await fetch(`${router.basePath}/api/gerar`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tema, quantidade, nomeMarca: marca.nomeMarca, descricao: marca.descricao, publicoAlvo: marca.publicoAlvo, conteudoPublico: marca.conteudoPublico, estiloComunicacao: marca.estiloComunicacao, idioma: marca.idioma }),
       });
@@ -144,7 +144,7 @@ export default function Gerar() {
     setRegenIdx(i);
     const anterior = slides[i];
     try {
-      const res = await fetch("/api/regenerar", {
+      const res = await fetch(`${router.basePath}/api/regenerar`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tema, tipo: slides[i].tipo, posicao: i + 1, total: slides.length, nomeMarca: marca.nomeMarca }),
       });

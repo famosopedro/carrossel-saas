@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { getMarca, saveMarca, getPerfis, savePerfis, getPerfilAtivoId, setPerfilAtivoId, FONTES, FONTES_SERIF, PESOS, DEFAULT_BRAND, SLIDE_DEFAULTS, type BrandConfig, type BrandProfile, type Slide } from "@/lib/storage";
 import { registrarFontesCustom, fileToDataUrl } from "@/lib/fonts";
@@ -139,6 +139,7 @@ export default function MarcaPage() {
   const [analisando, setAnalisando] = useState(false);
   const [analisandoIdx, setAnalisandoIdx] = useState(0);
   const [erroAnalise, setErroAnalise] = useState<string | null>(null);
+  const [formKey, setFormKey] = useState(0);
   const novoFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -281,7 +282,8 @@ export default function MarcaPage() {
     const configFinal: BrandConfig = { ...configInicial, ...extraConfig };
     console.log("[marca] aplicando configFinal:", JSON.stringify(configFinal));
     setMarca(configFinal);
-    setPerfilAtivoIdState(id); // garante que o form continua visível
+    setPerfilAtivoIdState(id);
+    setFormKey(k => k + 1);
     setSaved(false);
 
     // Tenta persistir
@@ -528,7 +530,7 @@ export default function MarcaPage() {
           {perfilAtivoId == null ? (
             <p style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>Selecione uma identidade acima para editar.</p>
           ) : (
-          <>
+          <React.Fragment key={formKey}>
           <p style={{ ...eyebrow, fontSize: 20, marginBottom: 28 }}>
             Identidade da marca
           </p>

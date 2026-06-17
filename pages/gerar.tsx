@@ -199,10 +199,10 @@ export default function Gerar() {
   const fontesSerif = [...FONTES_SERIF, ...(marca.customFonts || []).filter((f) => f.style === "italic").map((f) => f.name)].filter((v, i, a) => a.indexOf(v) === i);
 
   return (
-    <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "visible", color: FG, display: "flex" }}>
+    <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
 
       {/* SIDEBAR */}
-      <aside style={{ width: marcaOpen ? 300 : 270, background: SURFACE, borderRight: `1px solid ${LINE}`, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, position: "sticky", top: 56, height: "calc(100vh - 56px)", overflowY: "auto", transition: "width 0.2s" }}>
+      <aside style={{ width: marcaOpen ? 300 : 270, background: SURFACE, borderRight: `1px solid ${LINE}`, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, height: "100%", overflowY: "auto", transition: "width 0.2s" }}>
         {/* Brand card — expansível */}
         <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, overflow: "hidden" }}>
           <button

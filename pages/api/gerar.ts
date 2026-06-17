@@ -52,7 +52,7 @@ Responda SOMENTE com array JSON válido, sem markdown:
 
   try {
     const message = await client.messages.create({
-      model: "claude-haiku-4-5",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 3000,
       messages: [{ role: "user", content: prompt }],
     });

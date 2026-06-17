@@ -134,7 +134,8 @@ export default function Gerar() {
       criadoEmRef.current = Date.now();
       setSlides(data.slides);
       setSel(0);
-    } catch {
+    } catch (err) {
+      console.error("gerar error:", err);
       setErro("Não consegui gerar agora. Tente de novo em alguns segundos.");
     } finally { setLoading(false); }
   }

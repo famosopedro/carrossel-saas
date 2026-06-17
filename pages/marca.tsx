@@ -183,7 +183,9 @@ export default function MarcaPage() {
         const base64 = dataUrl.split(",")[1];
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 30000);
-        const resp = await fetch(`${router.basePath}/api/analisar-marca`, {
+        // Manda direto pro carrossel-saas (bypassa proxy do famoso-site que limita body a 4.5MB)
+        const apiOrigin = process.env.NEXT_PUBLIC_CARROSSEL_ORIGIN || "";
+        const resp = await fetch(`${apiOrigin}${router.basePath}/api/analisar-marca`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ base64, mimeType: novoArquivo.type }),

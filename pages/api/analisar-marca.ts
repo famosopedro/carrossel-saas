@@ -5,7 +5,21 @@ export const config = {
   api: { bodyParser: { sizeLimit: "10mb" } },
 };
 
+const ALLOWED_ORIGINS = [
+  "https://www.famosopedro.com.br",
+  "https://famosopedro.com.br",
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const origin = req.headers.origin || "";
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  }
+  if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).end();
 
   const { base64, mimeType } = req.body as { base64: string; mimeType: string };

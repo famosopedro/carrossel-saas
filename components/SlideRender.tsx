@@ -47,8 +47,9 @@ function RichText({ text, baseStyle }: { text: string; baseStyle: React.CSSPrope
 type TemaT = (typeof TEMAS)[Tema];
 
 function Logo({ size, color, marca, fontSans }: { size: number; color: string; marca: BrandConfig; fontSans: string }) {
+  const escala = (marca.logoTamanho ?? 100) / 100;
   return marca.logo ? (
-    <img src={marca.logo} alt="" style={{ height: size * 1.1, objectFit: "contain" }} />
+    <img src={marca.logo} alt="" style={{ height: size * 1.1 * escala, objectFit: "contain" }} />
   ) : (
     <span style={{ fontFamily: fontSans, fontWeight: 800, fontSize: size, letterSpacing: "-0.03em", color, lineHeight: 0.92 }}>
       {marca.nomeMarca}

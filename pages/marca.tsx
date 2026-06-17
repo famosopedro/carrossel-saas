@@ -41,6 +41,28 @@ function TextInput({ value, onChange, placeholder }: { value: string; onChange: 
   );
 }
 
+function ColorRow({ label, value, onChange, onRemove, labelEditable, onLabelChange }: {
+  label: string; value: string; onChange: (v: string) => void; onRemove: () => void;
+  labelEditable?: boolean; onLabelChange?: (v: string) => void;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {labelEditable ? (
+        <input value={label} onChange={(e) => onLabelChange?.(e.target.value)}
+          style={{ width: 64, background: "transparent", border: `1px solid ${LINE}`, borderRadius: 4, padding: "3px 6px", fontSize: 11, color: MUTED, outline: "none", fontFamily: "inherit" }} />
+      ) : (
+        <span style={{ fontSize: 11, color: MUTED, width: 64, flexShrink: 0 }}>{label}</span>
+      )}
+      <input type="color" value={value || "#888888"} onChange={(e) => onChange(e.target.value)}
+        style={{ width: 32, height: 28, border: `1px solid ${LINE}`, borderRadius: 4, cursor: "pointer", padding: 2, background: CARD, flexShrink: 0 }} />
+      <input type="text" value={value} onChange={(e) => { const v = e.target.value; if (!v || /^#[0-9a-fA-F]{0,6}$/.test(v)) onChange(v); }}
+        placeholder="#000000"
+        style={{ flex: 1, background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "5px 10px", fontSize: 12, color: FG, outline: "none", fontFamily: "monospace" }} />
+      <button onClick={onRemove} style={{ fontSize: 11, color: MUTED, background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0 }}>✕</button>
+    </div>
+  );
+}
+
 const PREVIEW_SLIDE: Slide = {
   tipo: "capa",
   titulo: "Sua marca pode estar te custando dinheiro.",
@@ -556,6 +578,7 @@ export default function MarcaPage() {
             </p>
           </Field>
 
+          {(!marca.corFundo && !marca.corTexto) && (
           <Field>
             <Label>Tema padrão</Label>
             <div style={{ display: "flex", gap: 8 }}>
@@ -564,35 +587,37 @@ export default function MarcaPage() {
               ))}
             </div>
           </Field>
+          )}
 
           <Field>
-            <Label>Cores customizadas <span style={{ textTransform: "none", fontWeight: 400, color: MUTED }}>— substituem o tema dark/light</span></Label>
-            <div style={{ display: "flex", flexDirection: "column" as const, gap: 10 }}>
+            <Label>Cores da marca</Label>
+            <div style={{ display: "flex", flexDirection: "column" as const, gap: 8 }}>
               {([
                 ["corFundo", "Fundo"],
                 ["corTexto", "Texto"],
                 ["corAccent", "Destaque"],
               ] as const).map(([key, label]) => (
-                <div key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 11, color: MUTED, width: 60, flexShrink: 0 }}>{label}</span>
-                  <input
-                    type="color"
-                    value={marca[key] || (key === "corFundo" ? "#1c1c1c" : key === "corTexto" ? "#ededed" : "#ffffff")}
-                    onChange={(e) => set(key, e.target.value)}
-                    style={{ width: 36, height: 28, border: `1px solid ${LINE}`, borderRadius: 4, cursor: "pointer", padding: 2, background: CARD }}
-                  />
-                  <input
-                    type="text"
-                    value={marca[key] || ""}
-                    onChange={(e) => { const v = e.target.value; if (!v || /^#[0-9a-fA-F]{0,6}$/.test(v)) set(key, v || undefined as unknown as string); }}
-                    placeholder="ex: #1a1a2e"
-                    style={{ flex: 1, background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "6px 10px", fontSize: 12, color: FG, outline: "none", fontFamily: "monospace" }}
-                  />
-                  {marca[key] && (
-                    <button onClick={() => set(key, undefined as unknown as string)} style={{ fontSize: 11, color: MUTED, background: "none", border: "none", cursor: "pointer", padding: 0 }}>✕</button>
-                  )}
-                </div>
+                <ColorRow key={key} label={label} value={marca[key] || ""} onRemove={() => set(key, undefined as unknown as string)} onChange={(v) => set(key, v)} />
               ))}
+              {(marca.coresExtras || []).map((cor, i) => (
+                <ColorRow
+                  key={i}
+                  label={cor.nome}
+                  labelEditable
+                  value={cor.hex}
+                  onLabelChange={(nome) => { const extras = [...(marca.coresExtras || [])]; extras[i] = { ...extras[i], nome }; set("coresExtras", extras); }}
+                  onChange={(hex) => { const extras = [...(marca.coresExtras || [])]; extras[i] = { ...extras[i], hex }; set("coresExtras", extras); }}
+                  onRemove={() => { const extras = (marca.coresExtras || []).filter((_, j) => j !== i); set("coresExtras", extras); }}
+                />
+              ))}
+              {((marca.coresExtras || []).length + 3) < 10 && (
+                <button
+                  onClick={() => set("coresExtras", [...(marca.coresExtras || []), { nome: "Cor " + ((marca.coresExtras || []).length + 4), hex: "" }])}
+                  style={{ alignSelf: "flex-start", padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", background: "transparent", color: MUTED, border: `1px dashed ${LINE}`, fontFamily: "inherit" }}
+                >
+                  + Adicionar cor
+                </button>
+              )}
             </div>
           </Field>
 
@@ -788,6 +813,11 @@ export default function MarcaPage() {
             </div>
             <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleLogo} style={{ display: "none" }} />
             <p style={{ fontSize: 11, color: MUTED, marginTop: 8 }}>PNG ou SVG com fundo transparente. Clique para ativar.</p>
+            {marca.logo && (
+              <div style={{ marginTop: 12 }}>
+                <SliderField label="Tamanho logo" value={marca.logoTamanho ?? 100} min={30} max={200} step={5} fmt={(v) => `${v}%`} onChange={(v) => set("logoTamanho", v)} />
+              </div>
+            )}
           </Field>
 
           <button

@@ -30,6 +30,8 @@ export type BrandConfig = {
   corFundo?: string;
   corTexto?: string;
   corAccent?: string;
+  coresExtras?: { nome: string; hex: string }[];
+  logoTamanho?: number;
   assets: string[];
   customFonts: CustomFont[];
 };

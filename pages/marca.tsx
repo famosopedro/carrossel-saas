@@ -183,6 +183,7 @@ export default function MarcaPage() {
       for (let i = 0; i < novoArquivos.length; i++) {
         setAnalisandoIdx(i);
         const arquivo = novoArquivos[i];
+        const apiUrl = `${apiOrigin}${router.basePath}/api/analisar-marca`;
         try {
           const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -193,7 +194,6 @@ export default function MarcaPage() {
           const base64 = dataUrl.split(",")[1];
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), 45000);
-          const apiUrl = `${apiOrigin}${router.basePath}/api/analisar-marca`;
           const resp = await fetch(apiUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

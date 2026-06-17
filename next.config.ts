@@ -9,8 +9,6 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   basePath: "/maquina-de-carrosseis",
   assetPrefix: appUrl,
-  eslint: { ignoreDuringBuilds: true },
-  typescript: { ignoreBuildErrors: false },
 };
 
 export default nextConfig;

@@ -846,7 +846,7 @@ export default function MarcaPage() {
             <p style={{ fontSize: 11, color: MUTED, marginTop: 8 }}>PNG ou SVG com fundo transparente. Clique para ativar.</p>
             {marca.logo && (
               <div style={{ marginTop: 12 }}>
-                <SliderField label="Tamanho logo" value={marca.logoTamanho ?? 100} min={30} max={200} step={5} fmt={(v) => `${v}%`} onChange={(v) => set("logoTamanho", v)} />
+                <SliderField label="Tamanho logo" value={marca.logoTamanho ?? 100} min={30} max={500} step={5} fmt={(v) => `${v}%`} onChange={(v) => set("logoTamanho", v)} />
               </div>
             )}
           </Field>

@@ -49,7 +49,7 @@ type TemaT = (typeof TEMAS)[Tema];
 function Logo({ size, color, marca, fontSans }: { size: number; color: string; marca: BrandConfig; fontSans: string }) {
   const escala = (marca.logoTamanho ?? 100) / 100;
   return marca.logo ? (
-    <img src={marca.logo} alt="" style={{ height: size * 1.1 * escala, objectFit: "contain" }} />
+    <img src={marca.logo} alt="" style={{ height: size * 1.1 * escala, objectFit: "contain", display: "block" }} />
   ) : (
     <span style={{ fontFamily: fontSans, fontWeight: 800, fontSize: size, letterSpacing: "-0.03em", color, lineHeight: 0.92 }}>
       {marca.nomeMarca}
@@ -185,7 +185,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
       </div>
 
       {slide.tipo === "cta" && (
-        <div style={{ position: "absolute", left: 90, bottom: 150, lineHeight: 0 }}>
+        <div style={{ position: "absolute", left: 96, bottom: 150, lineHeight: 0 }}>
           <Logo size={150} color={temaPrincipal.fg} marca={marca} fontSans={fontSans} />
         </div>
       )}

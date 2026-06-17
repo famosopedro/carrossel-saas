@@ -556,14 +556,55 @@ export default function MarcaPage() {
             <p style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>Selecione uma identidade acima para editar.</p>
           ) : (
           <div key={formKey}>
-          <p style={{ ...eyebrow, fontSize: 20, marginBottom: 28 }}>
-            Identidade da marca
-          </p>
+
+          {/* ── Perfil ── */}
+          <p style={{ ...eyebrow, fontSize: 20, marginBottom: 28 }}>Perfil</p>
+
+          <Field>
+            <Label>Tipo de perfil</Label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {([["pessoal", "Pessoal"], ["empresa", "Empresa"]] as const).map(([v, lbl]) => (
+                <button key={v} onClick={() => set("tipoPerfil", v)} style={{ flex: 1, padding: "9px 0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: (marca.tipoPerfil ?? "empresa") === v ? FG : CARD, color: (marca.tipoPerfil ?? "empresa") === v ? BG : MUTED, border: `1px solid ${(marca.tipoPerfil ?? "empresa") === v ? FG : LINE}` }}>{lbl}</button>
+              ))}
+            </div>
+          </Field>
 
           <Field>
             <Label>Nome da marca</Label>
             <TextInput value={marca.nomeMarca} onChange={(v) => set("nomeMarca", v)} placeholder="Ex: FAMOSO." />
           </Field>
+
+          <Field>
+            <Label>Idioma do conteúdo</Label>
+            <select value={marca.idioma ?? "Português"} onChange={(e) => set("idioma", e.target.value)}
+              style={{ width: "100%", background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "9px 12px", fontSize: 13, color: FG, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
+              {["Português", "English", "Español", "Français", "Italiano"].map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </Field>
+
+          <Field>
+            <Label>Descrição <span style={{ textTransform: "none", fontWeight: 400, color: MUTED }}>— o que você faz, diferenciais, serviços</span></Label>
+            <textarea value={marca.descricao ?? ""} onChange={(e) => set("descricao", e.target.value)} rows={5}
+              placeholder="Descreva o que você (ou sua empresa) faz, serviços/produtos, diferenciais, problemas que resolve…"
+              style={{ width: "100%", background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "9px 12px", fontSize: 13, color: FG, outline: "none", fontFamily: "inherit", resize: "vertical" as const, boxSizing: "border-box" as const }} />
+          </Field>
+
+          <Field>
+            <Label>Público-alvo</Label>
+            <textarea value={marca.publicoAlvo ?? ""} onChange={(e) => set("publicoAlvo", e.target.value)} rows={4}
+              placeholder="Descreva quem é seu público ideal…"
+              style={{ width: "100%", background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "9px 12px", fontSize: 13, color: FG, outline: "none", fontFamily: "inherit", resize: "vertical" as const, boxSizing: "border-box" as const }} />
+          </Field>
+
+          <Field>
+            <Label>Conteúdos que seu público ama</Label>
+            <textarea value={marca.conteudoPublico ?? ""} onChange={(e) => set("conteudoPublico", e.target.value)} rows={4}
+              placeholder="Que tipos de conteúdo seu público mais gosta de consumir…"
+              style={{ width: "100%", background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "9px 12px", fontSize: 13, color: FG, outline: "none", fontFamily: "inherit", resize: "vertical" as const, boxSizing: "border-box" as const }} />
+          </Field>
+
+          {/* ── Identidade visual ── */}
+          <p style={{ ...eyebrow, fontSize: 20, marginBottom: 28, marginTop: 16 }}>Identidade visual</p>
 
           <Field>
             <Label>URL / site (rodapé)</Label>
@@ -628,6 +669,13 @@ export default function MarcaPage() {
                 <button key={v} onClick={() => set("formato", v)} style={{ flex: 1, padding: "9px 0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: marca.formato === v ? FG : CARD, color: marca.formato === v ? BG : MUTED, border: `1px solid ${marca.formato === v ? FG : LINE}` }}>{lbl}</button>
               ))}
             </div>
+          </Field>
+
+          <Field>
+            <Label>Estilo de comunicação <span style={{ textTransform: "none", fontWeight: 400, color: MUTED }}>— como você fala com seu público</span></Label>
+            <textarea value={marca.estiloComunicacao ?? ""} onChange={(e) => set("estiloComunicacao", e.target.value)} rows={4}
+              placeholder="Ex: tom profissional e próximo, sem jargão técnico, prioriza frases curtas e chamadas diretas…"
+              style={{ width: "100%", background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "9px 12px", fontSize: 13, color: FG, outline: "none", fontFamily: "inherit", resize: "vertical" as const, boxSizing: "border-box" as const }} />
           </Field>
 
           <Field>

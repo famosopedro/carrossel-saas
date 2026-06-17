@@ -125,7 +125,7 @@ export default function Gerar() {
     try {
       const res = await fetch("/api/gerar", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tema, quantidade, nomeMarca: marca.nomeMarca }),
+        body: JSON.stringify({ tema, quantidade, nomeMarca: marca.nomeMarca, descricao: marca.descricao, publicoAlvo: marca.publicoAlvo, conteudoPublico: marca.conteudoPublico, estiloComunicacao: marca.estiloComunicacao, idioma: marca.idioma }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro desconhecido");

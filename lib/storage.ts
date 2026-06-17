@@ -27,6 +27,12 @@ export type BrandConfig = {
   serifEntreLetras: number;
   serifEntreLinhas: number;
   rodapeTexto: string;
+  tipoPerfil?: "pessoal" | "empresa";
+  idioma?: string;
+  descricao?: string;
+  publicoAlvo?: string;
+  conteudoPublico?: string;
+  estiloComunicacao?: string;
   corFundo?: string;
   corTexto?: string;
   corAccent?: string;

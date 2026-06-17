@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   basePath: "/maquina-de-carrosseis",
   assetPrefix: appUrl,
+  async headers() {
+    return [
+      {
+        source: "/_next/:path*",
+        headers: [{ key: "Access-Control-Allow-Origin", value: "*" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

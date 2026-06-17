@@ -199,7 +199,7 @@ export default function Gerar() {
   const fontesSerif = [...FONTES_SERIF, ...(marca.customFonts || []).filter((f) => f.style === "italic").map((f) => f.name)].filter((v, i, a) => a.indexOf(v) === i);
 
   return (
-    <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
+    <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "visible", color: FG, display: "flex" }}>
 
       {/* SIDEBAR */}
       <aside style={{ width: marcaOpen ? 300 : 270, background: SURFACE, borderRight: `1px solid ${LINE}`, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, position: "sticky", top: 56, height: "calc(100vh - 56px)", overflowY: "auto", transition: "width 0.2s" }}>
@@ -503,9 +503,9 @@ export default function Gerar() {
                   <button onClick={() => update(sel, "imagem", null)} style={{ fontSize: 10, color: MUTED, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>remover imagem</button>
                 </div>
               ) : (
-                <button onClick={() => imgFileRef.current?.click()} style={{ ...ghostBtn, marginBottom: 12, fontSize: 11 }}>+ Adicionar imagem</button>
+                <label htmlFor="img-upload" style={{ ...ghostBtn, marginBottom: 12, fontSize: 11, display: "block", textAlign: "center", cursor: "pointer" }}>+ Adicionar imagem</label>
               )}
-              <input ref={imgFileRef} type="file" accept="image/*" style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 1, height: 1 }} onChange={(e) => {
+              <input id="img-upload" ref={imgFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 // comprime: canvas resize pra max 1080px

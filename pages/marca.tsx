@@ -530,7 +530,7 @@ export default function MarcaPage() {
           {perfilAtivoId == null ? (
             <p style={{ fontSize: 13, color: MUTED, marginTop: 8 }}>Selecione uma identidade acima para editar.</p>
           ) : (
-          <React.Fragment key={formKey}>
+          <div key={formKey}>
           <p style={{ ...eyebrow, fontSize: 20, marginBottom: 28 }}>
             Identidade da marca
           </p>
@@ -773,7 +773,7 @@ export default function MarcaPage() {
           >
             {saved ? "Salvo ✓" : "Salvar identidade"}
           </button>
-          </>
+          </div>
           )}
         </div>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/router";
 import { getMarca, saveMarca, getPerfis, savePerfis, getPerfilAtivoId, setPerfilAtivoId, FONTES, FONTES_SERIF, PESOS, DEFAULT_BRAND, SLIDE_DEFAULTS, type BrandConfig, type BrandProfile, type Slide } from "@/lib/storage";
 import { registrarFontesCustom, fileToDataUrl } from "@/lib/fonts";
@@ -281,10 +282,12 @@ export default function MarcaPage() {
     // Atualiza o form independente de storage
     const configFinal: BrandConfig = { ...configInicial, ...extraConfig };
     console.log("[marca] aplicando configFinal:", JSON.stringify(configFinal));
-    setMarca(configFinal);
-    setPerfilAtivoIdState(id);
-    setFormKey(k => k + 1);
-    setSaved(false);
+    flushSync(() => {
+      setMarca(configFinal);
+      setPerfilAtivoIdState(id);
+      setFormKey(k => k + 1);
+      setSaved(false);
+    });
 
     // Tenta persistir
     const perfisSalvos = getPerfis();

@@ -503,27 +503,30 @@ export default function Gerar() {
                   <button onClick={() => update(sel, "imagem", null)} style={{ fontSize: 10, color: MUTED, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>remover imagem</button>
                 </div>
               ) : (
-                <label htmlFor="img-upload" style={{ ...ghostBtn, marginBottom: 12, fontSize: 11, display: "block", textAlign: "center", cursor: "pointer" }}>+ Adicionar imagem</label>
+                <button style={{ ...ghostBtn, marginBottom: 12, fontSize: 11 }} onClick={() => {
+                  const inp = document.createElement("input");
+                  inp.type = "file";
+                  inp.accept = "image/*";
+                  inp.onchange = () => {
+                    const file = inp.files?.[0];
+                    if (!file) return;
+                    const img = new Image();
+                    const url = URL.createObjectURL(file);
+                    img.onload = () => {
+                      const maxW = 1080;
+                      const scale = img.width > maxW ? maxW / img.width : 1;
+                      const canvas = document.createElement("canvas");
+                      canvas.width = img.width * scale;
+                      canvas.height = img.height * scale;
+                      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+                      update(sel, "imagem", canvas.toDataURL("image/jpeg", 0.82));
+                      URL.revokeObjectURL(url);
+                    };
+                    img.src = url;
+                  };
+                  inp.click();
+                }}>+ Adicionar imagem</button>
               )}
-              <input id="img-upload" ref={imgFileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                // comprime: canvas resize pra max 1080px
-                const img = new Image();
-                const url = URL.createObjectURL(file);
-                img.onload = () => {
-                  const maxW = 1080;
-                  const scale = img.width > maxW ? maxW / img.width : 1;
-                  const canvas = document.createElement("canvas");
-                  canvas.width = img.width * scale;
-                  canvas.height = img.height * scale;
-                  canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-                  update(sel, "imagem", canvas.toDataURL("image/jpeg", 0.82));
-                  URL.revokeObjectURL(url);
-                };
-                img.src = url;
-                e.target.value = "";
-              }} />
 
               {/* ELEMENTOS / ASSETS */}
               {(marca.assets || []).length > 0 && (

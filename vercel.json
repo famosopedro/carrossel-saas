@@ -1,5 +1,3 @@
 {
-  "buildCommand": "npm run build 2>&1",
-  "framework": "nextjs",
-  "nodeVersion": "22"
+  "framework": "nextjs"
 }

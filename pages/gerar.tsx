@@ -204,7 +204,7 @@ export default function Gerar() {
       {/* SIDEBAR */}
       <aside style={{ width: marcaOpen ? 300 : 270, background: SURFACE, borderRight: `1px solid ${LINE}`, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, height: "100%", overflowY: "auto", transition: "width 0.2s" }}>
         {/* Brand card — expansível */}
-        <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, overflow: "hidden" }}>
+        <div style={{ borderRadius: 10, border: `1px solid ${LINE}` }}>
           <button
             onClick={() => setMarcaOpen((o) => !o)}
             style={{ width: "100%", padding: "10px 12px", background: CARD, border: "none", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" as const }}

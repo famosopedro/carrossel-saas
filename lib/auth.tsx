@@ -21,12 +21,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    // getSession detecta sessão do hash #access_token e de cookies/storage
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    async function init() {
+      const hash = window.location.hash;
+      if (hash.includes("access_token")) {
+        // OAuth hash — extrai e seta a sessão manualmente
+        const params = new URLSearchParams(hash.slice(1));
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+        if (accessToken && refreshToken) {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          // Limpa o hash da URL sem reload
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+      } else {
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+        setLoading(false);
+      }
+    }
 
+    init();
     return () => subscription.unsubscribe();
   }, []);
 

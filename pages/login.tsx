@@ -36,7 +36,7 @@ export default function Login() {
         setOk("Conta criada! Verifique seu e-mail para confirmar.");
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/login`,
+          redirectTo: `${window.location.origin}/maquina-de-carrosseis/login`,
         });
         if (error) throw error;
         setOk("Link de redefinição enviado para seu e-mail.");

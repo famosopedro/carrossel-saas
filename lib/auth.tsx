@@ -16,28 +16,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Atualiza em mudanças futuras (refresh de token, signOut em outra aba).
+    // NÃO controla loading inicial — quem manda nisso é o init() abaixo.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      setLoading(false);
     });
 
     async function init() {
       const hash = window.location.hash;
+      // Callback do OAuth: token vem no hash. Processa de forma determinística.
       if (hash.includes("access_token")) {
-        // OAuth hash — extrai e seta a sessão manualmente
         const params = new URLSearchParams(hash.slice(1));
         const accessToken = params.get("access_token");
         const refreshToken = params.get("refresh_token");
         if (accessToken && refreshToken) {
-          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-          // Limpa o hash da URL sem reload
-          window.history.replaceState(null, "", window.location.pathname);
+          const { data } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          setSession(data.session);
+          // Limpa o hash sem reload, preservando query string
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
         }
       } else {
         const { data } = await supabase.auth.getSession();
         setSession(data.session);
-        setLoading(false);
       }
+      // Só libera DEPOIS de resolver — garante que loading=false já tem o user certo
+      setLoading(false);
     }
 
     init();

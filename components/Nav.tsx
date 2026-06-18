@@ -38,8 +38,13 @@ function IconAuto() {
   );
 }
 
+function themeForHour(): "dark" | "light" {
+  const h = new Date().getHours();
+  return h >= 7 && h < 19 ? "light" : "dark";
+}
+
 function applyTheme(t: Theme) {
-  if (t === "auto") document.documentElement.removeAttribute("data-theme");
+  if (t === "auto") document.documentElement.setAttribute("data-theme", themeForHour());
   else document.documentElement.setAttribute("data-theme", t);
 }
 
@@ -51,6 +56,12 @@ export default function Nav() {
     const saved = (localStorage.getItem("famoso_theme") as Theme) || "dark";
     setThemeState(saved);
     applyTheme(saved);
+
+    const interval = setInterval(() => {
+      const current = (localStorage.getItem("famoso_theme") as Theme) || "dark";
+      if (current === "auto") applyTheme("auto");
+    }, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   function handleTheme(t: Theme) {

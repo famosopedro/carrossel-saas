@@ -216,7 +216,7 @@ export default function Gerar() {
             )}
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: FG, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{marca.nomeMarca}</p>
-              <p style={{ margin: 0, fontSize: 10, color: MUTED }}>{marca.fonte} · {marca.formato === "vertical" ? "4:5" : "1:1"}</p>
+              <p style={{ margin: 0, fontSize: 11, color: FG, opacity: 0.6 }}>{marca.fonte} · {marca.formato === "vertical" ? "4:5" : "1:1"}</p>
             </div>
             <span style={{ fontSize: 10, color: MUTED, flexShrink: 0 }}>{marcaOpen ? "▲" : "▼"}</span>
           </button>

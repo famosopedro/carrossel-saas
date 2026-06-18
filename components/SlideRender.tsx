@@ -171,10 +171,16 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
   };
 
   // layout normal
+  // Imagem fundo/direita: renderiza ANTES do conteúdo (texto fica por cima).
+  // Imagem topo/base: renderiza DEPOIS do conteúdo (cobre o overflow naturalmente
+  //   sem cortar o texto com clip — o campo de texto ocupa metade do slide e
+  //   qualquer overflow fica escondido sob a imagem).
+  const imgDepois = slide.imagem && (imgPos === "topo" || imgPos === "base");
+
   return (
     <div ref={ref} style={{ width: dim.w, height: dim.h, background: temaPrincipal.bgGrad || temaPrincipal.bg, position: "relative", overflow: "hidden", fontFamily: fontSans, boxSizing: "border-box" }}>
       <div style={{ backgroundImage: GRAIN, backgroundSize: "200px 200px", position: "absolute", inset: 0, opacity: temaPrincipal === TEMAS.light ? 0.04 : 0.06, mixBlendMode: "overlay", pointerEvents: "none" }} />
-      {slide.imagem && <img src={slide.imagem} alt="" style={imgStyle[imgPos]} />}
+      {!imgDepois && slide.imagem && <img src={slide.imagem} alt="" style={imgStyle[imgPos]} />}
       {(slide.elementos ?? []).map((el, i) => (
         <img key={i} src={el.src} alt="" style={{ position: "absolute", left: `${el.x}%`, top: `${el.y}%`, width: el.tamanho, transform: `translate(-50%, -50%) rotate(${el.rotacao}deg)`, objectFit: "contain", pointerEvents: "none" }} />
       ))}
@@ -183,10 +189,9 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
         position: "absolute",
         left: 96,
         right: imgPos === "direita" && slide.imagem ? dim.w * 0.48 : 96,
-        top: imgPos === "topo" && slide.imagem ? dim.h * 0.52 : 96,
-        bottom: imgPos === "base" && slide.imagem ? dim.h * 0.52 : 170,
+        top: 96,
+        bottom: 170,
         display: "flex", flexDirection: "column",
-        overflow: "hidden",
       }}>
         <div style={{ lineHeight: 0, marginBottom: slide.tipo === "capa" ? 208 : 128, alignSelf: "flex-start" }}>
           <Logo size={slide.tipo === "capa" ? 76 : 52} color={corTexto} marca={marca} fontSans={fontSans} />
@@ -211,6 +216,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
         )}
       </div>
 
+      {imgDepois && <img src={slide.imagem!} alt="" style={imgStyle[imgPos]} />}
       <Footer temaRodape={temaPrincipal} slide={slide} marca={marca} fontSerif={fontSerif} corTexto={corTexto} index={index} />
     </div>
   );

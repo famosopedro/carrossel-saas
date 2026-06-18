@@ -53,7 +53,7 @@ export default function Login() {
     setErro(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/gerar` },
+      options: { redirectTo: `${window.location.origin}/maquina-de-carrosseis/gerar` },
     });
     if (error) setErro(error.message);
   }

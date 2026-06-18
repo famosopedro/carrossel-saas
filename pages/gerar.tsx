@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import { supabase } from "@/lib/supabase";
 import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, DEFAULT_BRAND, SLIDE_DEFAULTS, FONTES, FONTES_SERIF, PESOS, type BrandConfig, type Slide, type SlideTipo, type TextDec, type SlideLayout, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
 import SlideRender, { DIM } from "@/components/SlideRender";
 import PromoRail from "@/components/PromoRail";
@@ -120,12 +121,20 @@ export default function Gerar() {
     return () => clearTimeout(t);
   }, [slides, tema, carrosselId]);
 
+  async function authHeaders() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return {
+      "Content-Type": "application/json",
+      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    };
+  }
+
   async function handleGerar() {
     if (!tema.trim()) return;
     setLoading(true); setErro(null);
     try {
       const res = await fetch(`/api/gerar`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: await authHeaders(),
         body: JSON.stringify({ tema, quantidade, nomeMarca: marca.nomeMarca, descricao: marca.descricao, publicoAlvo: marca.publicoAlvo, conteudoPublico: marca.conteudoPublico, estiloComunicacao: marca.estiloComunicacao, idioma: marca.idioma }),
       });
       const data = await res.json();
@@ -146,7 +155,7 @@ export default function Gerar() {
     const anterior = slides[i];
     try {
       const res = await fetch(`/api/regenerar`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: await authHeaders(),
         body: JSON.stringify({ tema, tipo: slides[i].tipo, posicao: i + 1, total: slides.length, nomeMarca: marca.nomeMarca }),
       });
       const data = await res.json();

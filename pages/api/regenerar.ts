@@ -1,10 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import Anthropic from "@anthropic-ai/sdk";
+import { requireAuth, rateLimited } from "@/lib/api-auth";
 
 const client = new Anthropic();
+const T = (s: string | undefined, max: number) => (s ?? "").slice(0, max);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
+
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  if (rateLimited(user.id, 20, 60_000)) {
+    return res.status(429).json({ error: "Muitas requisições. Aguarde um minuto." });
+  }
 
   const { tema, tipo, posicao, total, nomeMarca } = req.body as {
     tema: string;
@@ -14,8 +23,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     nomeMarca: string;
   };
 
-  const prompt = `Carrossel do Instagram da marca ${nomeMarca || "a marca"} sobre "${tema}" (estilo editorial sóbrio).
-Reescreva APENAS o slide ${posicao} de ${total}, do tipo "${tipo}".
+  const temaS = T(tema, 300);
+  const nomeMarcaS = T(nomeMarca, 100);
+  const tipoS = T(tipo, 20);
+  const posicaoN = Math.min(Math.max(1, Number(posicao) || 1), 50);
+  const totalN = Math.min(Math.max(1, Number(total) || 1), 20);
+
+  const prompt = `Carrossel do Instagram da marca ${nomeMarcaS || "a marca"} sobre "${temaS}" (estilo editorial sóbrio).
+Reescreva APENAS o slide ${posicaoN} de ${totalN}, do tipo "${tipoS}".
 
 Retorne UM objeto JSON:
 - tipo: "${tipo}"

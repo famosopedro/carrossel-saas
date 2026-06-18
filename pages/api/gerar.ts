@@ -1,12 +1,21 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import Anthropic from "@anthropic-ai/sdk";
+import { requireAuth, rateLimited } from "@/lib/api-auth";
 
 const client = new Anthropic();
+const T = (s: string | undefined, max: number) => (s ?? "").slice(0, max);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { tema, quantidade, nomeMarca, descricao, publicoAlvo, conteudoPublico, estiloComunicacao, idioma } = req.body as {
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  if (rateLimited(user.id, 10, 60_000)) {
+    return res.status(429).json({ error: "Muitas requisições. Aguarde um minuto." });
+  }
+
+  const { tema, quantidade: qtdRaw, nomeMarca, descricao, publicoAlvo, conteudoPublico, estiloComunicacao, idioma } = req.body as {
     tema: string;
     quantidade: number;
     nomeMarca: string;
@@ -17,20 +26,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     idioma?: string;
   };
 
-  if (!tema || !quantidade) return res.status(400).json({ error: "tema e quantidade obrigatórios" });
+  const quantidade = Math.min(Math.max(1, Number(qtdRaw) || 5), 20);
+  const temaS = T(tema, 300);
+  const nomeMarcaS = T(nomeMarca, 100);
+
+  if (!temaS) return res.status(400).json({ error: "tema e quantidade obrigatórios" });
 
   const dna = [
-    descricao && `Sobre a marca: ${descricao}`,
-    publicoAlvo && `Público-alvo: ${publicoAlvo}`,
-    conteudoPublico && `Conteúdos que o público ama: ${conteudoPublico}`,
-    estiloComunicacao && `Estilo de comunicação: ${estiloComunicacao}`,
+    descricao && `Sobre a marca: ${T(descricao, 500)}`,
+    publicoAlvo && `Público-alvo: ${T(publicoAlvo, 300)}`,
+    conteudoPublico && `Conteúdos que o público ama: ${T(conteudoPublico, 300)}`,
+    estiloComunicacao && `Estilo de comunicação: ${T(estiloComunicacao, 200)}`,
   ].filter(Boolean).join("\n");
 
   const prompt = `Você é especialista em copywriting de carrosseis do Instagram para marcas profissionais e sóbrias (estilo editorial).
 
-Marca: ${nomeMarca || "a marca"}
-Idioma: ${idioma || "Português"}
-Tema: "${tema}"
+Marca: ${nomeMarcaS || "a marca"}
+Idioma: ${T(idioma, 20) || "Português"}
+Tema: "${temaS}"
 Total de slides: ${quantidade}
 ${dna ? `\nDNA da marca:\n${dna}\n` : ""}
 

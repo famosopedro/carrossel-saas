@@ -7,18 +7,22 @@ import { BG, FG, MUTED, FAINT, LINE, SURFACE, CARD, ACCENT } from "@/lib/ui";
 type Mode = "login" | "signup" | "reset";
 
 export default function Login() {
-  const { user } = useAuth();
+  const { user, oauthError } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(oauthError);
   const [ok, setOk] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) router.replace("/gerar");
   }, [user, router]);
+
+  useEffect(() => {
+    if (oauthError) setErro(oauthError);
+  }, [oauthError]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

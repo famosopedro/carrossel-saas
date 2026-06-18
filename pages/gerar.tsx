@@ -312,7 +312,7 @@ export default function Gerar() {
                           <img src={src} alt="" style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }} />
                           {ativo && <div style={{ position: "absolute", inset: 0, background: "rgba(237,237,237,0.15)", borderRadius: 3 }} />}
                         </button>
-                        <button onClick={() => { const next = (marca.logos || []).filter((_, j) => j !== i); setMarca((prev) => { const n = { ...prev, logos: next, logo: prev.logo === src ? (next[0] || null) : prev.logo }; saveMarca(n); return n; }); }} style={{ position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "none", color: FG, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                        <button title="Remover logo" onClick={() => { const next = (marca.logos || []).filter((_, j) => j !== i); setMarca((prev) => { const n = { ...prev, logos: next, logo: prev.logo === src ? (next[0] || null) : prev.logo }; saveMarca(n); return n; }); }} style={{ position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "none", color: FG, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                       </div>
                     );
                   })}
@@ -332,7 +332,7 @@ export default function Gerar() {
                       <div style={{ width: "100%", aspectRatio: "1", background: "rgba(255,255,255,0.05)", borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", border: `1px solid ${LINE}` }}>
                         <img src={src} alt="" style={{ maxWidth: "80%", maxHeight: "80%", objectFit: "contain" }} />
                       </div>
-                      <button onClick={() => { const next = (marca.assets||[]).filter((_,j)=>j!==i); setMarca(p=>{const n={...p,assets:next};saveMarca(n);return n;}); }} style={{ position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "rgba(0,0,0,0.8)", border: "none", color: FG, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                      <button title="Remover asset" onClick={() => { const next = (marca.assets||[]).filter((_,j)=>j!==i); setMarca(p=>{const n={...p,assets:next};saveMarca(n);return n;}); }} style={{ position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "rgba(0,0,0,0.8)", border: "none", color: FG, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                     </div>
                   ))}
                   <button onClick={() => assetFileRef.current?.click()} style={{ aspectRatio: "1", borderRadius: 5, fontSize: 16, cursor: "pointer", background: "transparent", color: MUTED, border: `1px dashed ${LINE}` }}>+</button>
@@ -375,7 +375,9 @@ export default function Gerar() {
             <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={lblStyle}>Exportar</label>
               <button onClick={baixarUm} style={ghostBtn}>↓ Slide atual (PNG)</button>
-              <button onClick={baixarTodos} disabled={exportando} style={ghostBtn}>{exportando ? `Gerando ZIP… ${zipProg ?? ""}` : "↓ Todos (ZIP)"}</button>
+              <button onClick={baixarTodos} disabled={exportando} style={ghostBtn}>
+                {exportando ? `⏳ Exportando ${zipProg ?? ""}…` : "↓ Todos (ZIP)"}
+              </button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, color: OK }}>
               <span style={{ fontSize: 9 }}>●</span>
@@ -510,9 +512,10 @@ export default function Gerar() {
                 <div style={{ marginBottom: 12 }}>
                   <img src={atual.imagem} alt="" style={{ width: "100%", height: 80, objectFit: "cover", borderRadius: 6, marginBottom: 8 }} />
                   <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                    {(["fundo", "topo", "base", "direita"] as const).map((p) => (
-                      <button key={p} onClick={() => update(sel, "imagemPos", p)} style={{ flex: 1, padding: "5px 0", borderRadius: 4, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: (atual.imagemPos ?? "fundo") === p ? FG : CARD, color: (atual.imagemPos ?? "fundo") === p ? BG : MUTED, border: `1px solid ${(atual.imagemPos ?? "fundo") === p ? FG : LINE}` }}>{p}</button>
-                    ))}
+                    {(["fundo", "topo", "base", "direita"] as const).map((p) => {
+                      const titles = { fundo: "Imagem de fundo (full bleed)", topo: "Imagem no topo do slide", base: "Imagem na base do slide", direita: "Imagem na metade direita" };
+                      return <button key={p} title={titles[p]} onClick={() => update(sel, "imagemPos", p)} style={{ flex: 1, padding: "5px 0", borderRadius: 4, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: (atual.imagemPos ?? "fundo") === p ? FG : CARD, color: (atual.imagemPos ?? "fundo") === p ? BG : MUTED, border: `1px solid ${(atual.imagemPos ?? "fundo") === p ? FG : LINE}` }}>{p}</button>;
+                    })}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 10, color: MUTED, flexShrink: 0 }}>Opacidade</span>

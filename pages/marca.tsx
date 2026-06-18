@@ -59,7 +59,7 @@ function ColorRow({ label, value, onChange, onRemove, labelEditable, onLabelChan
       <input type="text" value={value} onChange={(e) => { const v = e.target.value; if (!v || /^#[0-9a-fA-F]{0,6}$/.test(v)) onChange(v); }}
         placeholder="#000000"
         style={{ flex: 1, background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, padding: "5px 10px", fontSize: 12, color: FG, outline: "none", fontFamily: "monospace" }} />
-      <button onClick={onRemove} style={{ fontSize: 11, color: MUTED, background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0 }}>✕</button>
+      <button onClick={onRemove} title="Remover cor" aria-label="Remover cor" style={{ fontSize: 11, color: MUTED, background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0 }}>✕</button>
     </div>
   );
 }

@@ -416,7 +416,7 @@ export default function Gerar() {
             </div>
 
             {/* Editor do slide selecionado */}
-            <div style={{ flex: 1, maxWidth: 420, overflowY: "auto", maxHeight: "calc(100vh - 112px)", position: "sticky", top: 0 }}>
+            <div style={{ flex: 1, maxWidth: 420 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <p style={{ ...eyebrow }}>Slide {sel + 1} <span style={{ color: FAINT }}>/ {slides.length}</span></p>
                 <div style={{ display: "flex", gap: 6 }}>

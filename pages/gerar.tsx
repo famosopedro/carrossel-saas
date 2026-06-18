@@ -207,7 +207,7 @@ export default function Gerar() {
         <div style={{ borderRadius: 10, border: `1px solid ${LINE}` }}>
           <button
             onClick={() => setMarcaOpen((o) => !o)}
-            style={{ width: "100%", padding: "10px 12px", background: CARD, border: "none", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" as const }}
+            style={{ width: "100%", padding: "10px 12px", background: CARD, border: "none", borderRadius: marcaOpen ? "10px 10px 0 0" : 10, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" as const }}
           >
             {marca.logo ? (
               <img src={marca.logo} alt="" style={{ width: 24, height: 24, objectFit: "contain", borderRadius: 4, background: BG, padding: 2, flexShrink: 0 }} />

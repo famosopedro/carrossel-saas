@@ -2,6 +2,8 @@ export type Formato = "vertical" | "quadrado";
 export type Tema = "dark" | "light";
 export type TextDec = "none" | "underline" | "line-through";
 export type SlideLayout = "normal" | "split";
+export type NumeracaoPosicao = "bottom-right" | "bottom-left" | "top-right" | "top-left";
+export type NumeracaoEstilo = "numero" | "seta" | "nenhum";
 
 export type BrandConfig = {
   nomeMarca: string;
@@ -38,6 +40,8 @@ export type BrandConfig = {
   corAccent?: string;
   coresExtras?: { nome: string; hex: string }[];
   logoTamanho?: number;
+  numeracaoPosicao?: NumeracaoPosicao;
+  numeracaoEstilo?: NumeracaoEstilo;
   assets: string[];
   customFonts: CustomFont[];
 };

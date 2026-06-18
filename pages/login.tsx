@@ -17,7 +17,7 @@ export default function Login() {
   const [ok, setOk] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) router.replace("/gerar");
+    if (user) router.replace("/marca");
   }, [user, router]);
 
   useEffect(() => {
@@ -33,11 +33,15 @@ export default function Login() {
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
         if (error) throw error;
-        router.replace("/gerar");
+        router.replace("/marca");
       } else if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({ email, password: senha });
+        const { data, error } = await supabase.auth.signUp({ email, password: senha });
         if (error) throw error;
-        setOk("Conta criada! Verifique seu e-mail para confirmar.");
+        // Supabase silently "succeeds" para email já cadastrado — detectar via identities vazio
+        if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+          throw new Error("User already registered");
+        }
+        setOk("Conta criada! Você já pode entrar.");
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/maquina-de-carrosseis/login`,
@@ -57,7 +61,7 @@ export default function Login() {
     setErro(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/maquina-de-carrosseis/gerar` },
+      options: { redirectTo: `${window.location.origin}/maquina-de-carrosseis/marca` },
     });
     if (error) setErro(error.message);
   }

@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import type { BrandConfig, Slide, Tema, Elemento } from "@/lib/storage";
+import type { BrandConfig, Slide, Tema, Elemento, NumeracaoPosicao, NumeracaoEstilo } from "@/lib/storage";
 
 export const DIM = {
   vertical: { w: 1080, h: 1350 },
@@ -57,17 +57,45 @@ function Logo({ size, color, marca, fontSans }: { size: number; color: string; m
   );
 }
 
+const POS_MAP: Record<NumeracaoPosicao, React.CSSProperties> = {
+  "bottom-right": { right: 96, bottom: 80 },
+  "bottom-left": { left: 96, bottom: 80 },
+  "top-right":   { right: 96, top: 80 },
+  "top-left":    { left: 96, top: 80 },
+};
+
 function Footer({ temaRodape, slide, marca, fontSerif, corTexto, index }: { temaRodape: TemaT; slide: Slide; marca: BrandConfig; fontSerif: string; corTexto: string; index: number }) {
   const cor = slide.textoClaro != null ? corTexto : temaRodape.fg;
+  const posicao = marca.numeracaoPosicao ?? "bottom-right";
+  const estilo = marca.numeracaoEstilo ?? "numero";
+  const isBottom = posicao.startsWith("bottom");
+  const isLeft = posicao.endsWith("left");
+
   return (
-    <div style={{ position: "absolute", left: 96, right: 96, bottom: 80, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-      <span style={{ fontFamily: fontSerif, fontStyle: "italic", fontSize: 32, color: cor, opacity: 0.85 }}>
+    <>
+      {/* Texto rodapé — sempre bottom-left */}
+      <span style={{ position: "absolute", left: 96, bottom: 80, fontFamily: fontSerif, fontStyle: "italic", fontSize: 32, color: cor, opacity: 0.85 }}>
         {marca.rodapeTexto || `${marca.url}//`}
       </span>
-      <span style={{ width: 54, height: 54, borderRadius: "50%", border: `2px solid ${cor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 600, color: cor }}>
-        {index + 1}
-      </span>
-    </div>
+      {/* Numeração / seta */}
+      {estilo !== "nenhum" && !(isBottom && isLeft) && (
+        <div style={{ position: "absolute", ...POS_MAP[posicao], display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {estilo === "seta" ? (
+            <span style={{ fontSize: 52, color: cor, lineHeight: 1, opacity: 0.85 }}>→</span>
+          ) : (
+            <span style={{ width: 54, height: 54, borderRadius: "50%", border: `2px solid ${cor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 600, color: cor }}>
+              {index + 1}
+            </span>
+          )}
+        </div>
+      )}
+      {/* Quando numeração e rodapé colidiriam (bottom-left), mostra numeração ao lado */}
+      {estilo !== "nenhum" && isBottom && isLeft && (
+        <span style={{ position: "absolute", left: 320, bottom: 80, width: 54, height: 54, borderRadius: "50%", border: `2px solid ${cor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 600, color: cor }}>
+          {estilo === "seta" ? "→" : index + 1}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -106,7 +134,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
         {/* topo dark */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: topH, background: temaTop.bgGrad || temaTop.bg, overflow: "hidden" }}>
           <div style={{ backgroundImage: GRAIN, backgroundSize: "200px 200px", position: "absolute", inset: 0, opacity: 0.06, mixBlendMode: "overlay", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", left: 96, right: 96, top: 100, display: "flex", flexDirection: "column" }}>
+          <div style={{ position: "absolute", left: 96, right: 96, top: 100, bottom: 20, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <h1 style={{ color: temaTop.fg, fontSize: marca.tituloTamanho, fontWeight: marca.tituloPeso, lineHeight: marca.tituloEntreLinhas, letterSpacing: `${marca.tituloEntreLetras}em`, margin: 0, textDecoration: slide.tituloDecoracao !== "none" ? slide.tituloDecoracao : undefined }}>
               <RichText text={slide.titulo} baseStyle={{}} />
             </h1>
@@ -156,8 +184,9 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
         left: 96,
         right: imgPos === "direita" && slide.imagem ? dim.w * 0.48 : 96,
         top: imgPos === "topo" && slide.imagem ? dim.h * 0.52 : 96,
-        bottom: imgPos === "base" && slide.imagem ? dim.h * 0.52 : undefined,
+        bottom: imgPos === "base" && slide.imagem ? dim.h * 0.52 : 170,
         display: "flex", flexDirection: "column",
+        overflow: "hidden",
       }}>
         <div style={{ lineHeight: 0, marginBottom: slide.tipo === "capa" ? 208 : 128, alignSelf: "flex-start" }}>
           <Logo size={slide.tipo === "capa" ? 76 : 52} color={corTexto} marca={marca} fontSans={fontSans} />

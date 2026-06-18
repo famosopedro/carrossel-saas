@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, DEFAULT_BRAND, SLIDE_DEFAULTS, FONTES, FONTES_SERIF, PESOS, type BrandConfig, type Slide, type SlideTipo, type TextDec, type SlideLayout } from "@/lib/storage";
+import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, DEFAULT_BRAND, SLIDE_DEFAULTS, FONTES, FONTES_SERIF, PESOS, type BrandConfig, type Slide, type SlideTipo, type TextDec, type SlideLayout, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
 import SlideRender, { DIM } from "@/components/SlideRender";
 import PromoRail from "@/components/PromoRail";
 import { exportSlidePng, exportAllZip } from "@/lib/export";
@@ -202,7 +202,7 @@ export default function Gerar() {
     <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
 
       {/* SIDEBAR */}
-      <aside style={{ width: marcaOpen ? 300 : 270, background: SURFACE, borderRight: `1px solid ${LINE}`, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, height: "100%", overflowY: "auto", transition: "width 0.2s" }}>
+      <aside className="sidebar-scroll" style={{ width: marcaOpen ? 300 : 270, background: SURFACE, borderRight: `1px solid ${LINE}`, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, height: "100%", overflowY: "auto", transition: "width 0.2s" }}>
         {/* Brand card — expansível */}
         <div style={{ borderRadius: 10, border: `1px solid ${LINE}` }}>
           <button
@@ -265,16 +265,36 @@ export default function Gerar() {
               {/* Pesos */}
               <div>
                 <p style={{ margin: "0 0 9px", fontFamily: SERIF, fontStyle: "italic" as const, fontWeight: 500, fontSize: 15, color: FG, letterSpacing: "0.01em" }}>Peso</p>
-                {([["Título", "tituloPeso"], ["Corpo", "corpoPeso"], ["Serif", "serifPeso"]] as const).map(([lbl, key]) => (
-                  <div key={key} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-                    <span style={{ fontSize: 10, color: MUTED, width: 36, flexShrink: 0 }}>{lbl}</span>
-                    <div style={{ display: "flex", gap: 3 }}>
-                      {PESOS.map((p) => (
-                        <button key={p} onClick={() => setM(key, p)} style={{ width: 28, padding: "4px 0", borderRadius: 4, fontSize: 9, fontWeight: 700, cursor: "pointer", background: marca[key] === p ? FG : CARD, color: marca[key] === p ? BG : MUTED, border: `1px solid ${marca[key] === p ? FG : LINE}` }}>{p}</button>
-                      ))}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {([["Título", "tituloPeso"], ["Corpo", "corpoPeso"], ["Serif", "serifPeso"]] as const).map(([lbl, key]) => (
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 10, color: MUTED, width: 36, flexShrink: 0 }}>{lbl}</span>
+                      <input type="range" min={400} max={900} step={100} value={marca[key]} onChange={(e) => setM(key, parseInt(e.target.value))} style={{ flex: 1, accentColor: FG, cursor: "pointer" }} />
+                      <span style={{ fontSize: 10, fontFamily: "monospace", color: FG, width: 28, textAlign: "right" as const }}>{marca[key]}</span>
                     </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Numeração */}
+              <div>
+                <p style={{ margin: "0 0 9px", fontFamily: SERIF, fontStyle: "italic" as const, fontWeight: 500, fontSize: 15, color: FG, letterSpacing: "0.01em" }}>Numeração</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {(["bottom-right", "bottom-left", "top-right", "top-left"] as NumeracaoPosicao[]).map((p) => {
+                      const lbl = { "bottom-right": "↘", "bottom-left": "↙", "top-right": "↗", "top-left": "↖" }[p];
+                      const ativo = (marca.numeracaoPosicao ?? "bottom-right") === p;
+                      return <button key={p} onClick={() => setM("numeracaoPosicao", p)} title={p} style={{ flex: 1, padding: "5px 0", borderRadius: 4, fontSize: 14, cursor: "pointer", fontFamily: "inherit", background: ativo ? FG : CARD, color: ativo ? BG : MUTED, border: `1px solid ${ativo ? FG : LINE}` }}>{lbl}</button>;
+                    })}
                   </div>
-                ))}
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {(["numero", "seta", "nenhum"] as NumeracaoEstilo[]).map((e) => {
+                      const lbl = { numero: "① Nº", seta: "→ Seta", nenhum: "∅ Nada" }[e];
+                      const ativo = (marca.numeracaoEstilo ?? "numero") === e;
+                      return <button key={e} onClick={() => setM("numeracaoEstilo", e)} style={{ flex: 1, padding: "5px 0", borderRadius: 4, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: ativo ? FG : CARD, color: ativo ? BG : MUTED, border: `1px solid ${ativo ? FG : LINE}` }}>{lbl}</button>;
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Logos */}
@@ -285,8 +305,9 @@ export default function Gerar() {
                     const ativo = marca.logo === src;
                     return (
                       <div key={i} style={{ position: "relative" }}>
-                        <button onClick={() => setM("logo", src)} style={{ width: "100%", height: 46, borderRadius: 5, cursor: "pointer", background: ativo ? FG : CARD, border: `1px solid ${ativo ? FG : LINE}`, display: "flex", alignItems: "center", justifyContent: "center", padding: 6, overflow: "hidden" }}>
-                          <img src={src} alt="" style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain", filter: ativo ? "invert(1)" : "none" }} />
+                        <button onClick={() => setM("logo", src)} style={{ width: "100%", height: 46, borderRadius: 5, cursor: "pointer", background: CARD, border: `2px solid ${ativo ? FG : LINE}`, display: "flex", alignItems: "center", justifyContent: "center", padding: 6, overflow: "hidden", position: "relative" }}>
+                          <img src={src} alt="" style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }} />
+                          {ativo && <div style={{ position: "absolute", inset: 0, background: "rgba(237,237,237,0.15)", borderRadius: 3 }} />}
                         </button>
                         <button onClick={() => { const next = (marca.logos || []).filter((_, j) => j !== i); setMarca((prev) => { const n = { ...prev, logos: next, logo: prev.logo === src ? (next[0] || null) : prev.logo }; saveMarca(n); return n; }); }} style={{ position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "none", color: FG, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                       </div>
@@ -334,10 +355,10 @@ export default function Gerar() {
 
         <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px" }}>
           <label style={lblStyle}>Slides</label>
-          <div style={{ display: "flex", gap: 6 }}>
-            {SLIDE_OPTIONS.map((n) => (
-              <button key={n} onClick={() => setQuantidade(n)} style={{ flex: 1, padding: "7px 0", borderRadius: 5, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: quantidade === n ? FG : "transparent", color: quantidade === n ? BG : MUTED, border: `1px solid ${quantidade === n ? FG : LINE}` }}>{n}</button>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setQuantidade((q) => Math.max(1, q - 1))} style={{ width: 32, height: 32, borderRadius: 5, border: `1px solid ${LINE}`, background: "transparent", color: FG, fontSize: 18, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+            <span style={{ flex: 1, textAlign: "center" as const, fontSize: 15, fontWeight: 700, color: FG }}>{quantidade}</span>
+            <button onClick={() => setQuantidade((q) => Math.min(30, q + 1))} style={{ width: 32, height: 32, borderRadius: 5, border: `1px solid ${LINE}`, background: "transparent", color: FG, fontSize: 18, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
           </div>
         </div>
 
@@ -594,10 +615,10 @@ export default function Gerar() {
   );
 }
 
-const DECS: { v: TextDec; label: string }[] = [
-  { v: "none", label: "—" },
-  { v: "underline", label: "U̲" },
-  { v: "line-through", label: "S̶" },
+const DECS: { v: TextDec; label: string; title: string }[] = [
+  { v: "none", label: "○", title: "Sem decoração" },
+  { v: "underline", label: "U̲", title: "Sublinhado" },
+  { v: "line-through", label: "S̶", title: "Riscado" },
 ];
 
 function DecRow({ label, value, onChange }: { label: string; value: TextDec; onChange: (v: TextDec) => void }) {
@@ -606,7 +627,7 @@ function DecRow({ label, value, onChange }: { label: string; value: TextDec; onC
       <span style={{ fontSize: 11, color: MUTED, width: 44, flexShrink: 0 }}>{label}</span>
       <div style={{ display: "flex", gap: 4 }}>
         {DECS.map((d) => (
-          <button key={d.v} onClick={() => onChange(d.v)} style={{ width: 32, height: 26, borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: value === d.v ? FG : "transparent", color: value === d.v ? BG : MUTED, border: `1px solid ${value === d.v ? FG : LINE}` }}>{d.label}</button>
+          <button key={d.v} onClick={() => onChange(d.v)} title={d.title} style={{ width: 32, height: 26, borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: value === d.v ? FG : "transparent", color: value === d.v ? BG : MUTED, border: `1px solid ${value === d.v ? FG : LINE}` }}>{d.label}</button>
         ))}
       </div>
     </div>

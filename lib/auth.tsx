@@ -16,19 +16,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const hasHash = typeof window !== "undefined" && window.location.hash.includes("access_token");
-
-    if (!hasHash) {
-      supabase.auth.getSession().then(({ data }) => {
-        setSession(data.session);
-        setLoading(false);
-      });
-    }
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setLoading(false);
     });
+
+    // getSession detecta sessão do hash #access_token e de cookies/storage
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+
     return () => subscription.unsubscribe();
   }, []);
 

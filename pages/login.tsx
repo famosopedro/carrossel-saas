@@ -44,7 +44,7 @@ export default function Login() {
         setOk("Conta criada! Você já pode entrar.");
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/maquina-de-carrosseis/login`,
+          redirectTo: `${window.location.origin}${router.basePath}/login`,
         });
         if (error) throw error;
         setOk("Link de redefinição enviado para seu e-mail.");
@@ -61,7 +61,7 @@ export default function Login() {
     setErro(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/maquina-de-carrosseis/marca` },
+      options: { redirectTo: `${window.location.origin}${router.basePath}/marca` },
     });
     if (error) setErro(error.message);
   }

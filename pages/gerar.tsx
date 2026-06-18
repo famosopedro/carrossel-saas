@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, DEFAULT_BRAND, SLIDE_DEFAULTS, FONTES, FONTES_SERIF, PESOS, type BrandConfig, type Slide, type SlideTipo, type TextDec, type SlideLayout, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
 import SlideRender, { DIM } from "@/components/SlideRender";
@@ -56,7 +57,7 @@ export default function Gerar() {
   function showUndo(msg: string, restore: () => void) {
     if (undoTimer.current) clearTimeout(undoTimer.current);
     setUndo({ msg, restore });
-    undoTimer.current = setTimeout(() => setUndo(null), 5000);
+    undoTimer.current = setTimeout(() => setUndo(null), 10000);
   }
 
   function setM<K extends keyof BrandConfig>(key: K, value: BrandConfig[K]) {
@@ -199,6 +200,8 @@ export default function Gerar() {
   const fontesSerif = [...FONTES_SERIF, ...(marca.customFonts || []).filter((f) => f.style === "italic").map((f) => f.name)].filter((v, i, a) => a.indexOf(v) === i);
 
   return (
+    <>
+    <Head><title>{tema ? `${tema} — Carrossel | FAMOSO®` : "Gerar carrossel | FAMOSO®"}</title></Head>
     <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
 
       {/* SIDEBAR */}
@@ -540,7 +543,9 @@ export default function Gerar() {
                       canvas.width = img.width * scale;
                       canvas.height = img.height * scale;
                       canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-                      update(sel, "imagem", canvas.toDataURL("image/jpeg", 0.82));
+                      // PNG e WebP preservam transparência; demais formatos usam JPEG
+                      const isPng = file.type === "image/png" || file.type === "image/webp";
+                      update(sel, "imagem", canvas.toDataURL(isPng ? "image/png" : "image/jpeg", 0.82));
                       URL.revokeObjectURL(url);
                     };
                     img.src = url;
@@ -612,6 +617,7 @@ export default function Gerar() {
         </div>
       )}
     </div>
+    </>
   );
 }
 

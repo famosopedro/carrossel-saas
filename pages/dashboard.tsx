@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import { getCarrosseis, deleteCarrossel, saveCarrossel, type Carrossel } from "@/lib/storage";
 import PromoRail from "@/components/PromoRail";
@@ -21,7 +22,7 @@ export default function Dashboard() {
     setCarrosseis((prev) => prev.filter((x) => x.id !== c.id));
     if (undoTimer.current) clearTimeout(undoTimer.current);
     setUndo(c);
-    undoTimer.current = setTimeout(() => setUndo(null), 5000);
+    undoTimer.current = setTimeout(() => setUndo(null), 10000);
   }
 
   function desfazerDelete() {
@@ -32,6 +33,8 @@ export default function Dashboard() {
   }
 
   return (
+    <>
+    <Head><title>Dashboard | FAMOSO®</title></Head>
     <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
       <div style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: "36px 28px" }}>
         <div style={{ maxWidth: 800, margin: "0 auto" }}>
@@ -180,5 +183,6 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+    </>
   );
 }

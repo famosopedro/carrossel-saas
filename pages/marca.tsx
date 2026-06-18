@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Head from "next/head";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/router";
 import { getMarca, saveMarca, getPerfis, savePerfis, getPerfilAtivoId, setPerfilAtivoId, FONTES, FONTES_SERIF, PESOS, DEFAULT_BRAND, BLANK_BRAND, SLIDE_DEFAULTS, type BrandConfig, type BrandProfile, type Slide } from "@/lib/storage";
@@ -370,6 +371,7 @@ export default function MarcaPage() {
   async function handleUploadSans(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert("Arquivo muito grande. Máximo 5 MB por fonte."); e.target.value = ""; return; }
     const { name, dataUrl } = await loadCustomFont(file, "normal");
     setCustomFontes((prev) => prev.includes(name) ? prev : [...prev, name]);
     setMarca((prev) => {
@@ -383,6 +385,7 @@ export default function MarcaPage() {
   async function handleUploadSerif(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert("Arquivo muito grande. Máximo 5 MB por fonte."); e.target.value = ""; return; }
     const { name, dataUrl } = await loadCustomFont(file, "italic");
     setCustomFontesSerif((prev) => prev.includes(name) ? prev : [...prev, name]);
     setMarca((prev) => {
@@ -394,6 +397,8 @@ export default function MarcaPage() {
   }
 
   return (
+    <>
+    <Head><title>Identidade Visual | FAMOSO®</title></Head>
     <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
       <div style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
         <div style={{ maxWidth: 860, margin: "0 auto", padding: "40px 28px", display: "grid", gridTemplateColumns: "1fr 320px", gap: 48, alignItems: "start" }}>
@@ -905,5 +910,6 @@ export default function MarcaPage() {
       </div>
       <PromoRail />
     </div>
+    </>
   );
 }

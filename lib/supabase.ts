@@ -1,9 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(url, key, {
+if (!url || !key) {
+  throw new Error(
+    "Variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY são obrigatórias. Verifique seu .env.local."
+  );
+}
+
+export const supabase = createClient(url as string, key as string, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

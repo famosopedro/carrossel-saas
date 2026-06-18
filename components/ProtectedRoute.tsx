@@ -10,7 +10,8 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user && !PUBLIC.includes(router.pathname)) {
+    const hasAuthHash = typeof window !== "undefined" && window.location.hash.includes("access_token");
+    if (!loading && !user && !PUBLIC.includes(router.pathname) && !hasAuthHash) {
       router.replace("/login");
     }
   }, [user, loading, router]);

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
-import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, DEFAULT_BRAND, FONTES, FONTES_SERIF, PESOS, novoSlide, deriveVariante, VARIANTES, type BrandConfig, type Slide, type SlideVariante, type ListaItem, type ChatMsg, type TextAlign, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
+import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, DEFAULT_BRAND, FONTES, FONTES_SERIF, PESOS, novoSlide, deriveVariante, migrarSlide, VARIANTES, type BrandConfig, type Slide, type SlideVariante, type ListaItem, type ChatMsg, type TextAlign, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
 import SlideRender, { DIM } from "@/components/SlideRender";
 import RichField from "@/components/RichField";
 import IconPicker from "@/components/IconPicker";
@@ -138,7 +138,7 @@ export default function Gerar() {
       // carrossel novo = id novo (não sobrescreve o que já estava salvo)
       setCarrosselId(`c_${Date.now()}`);
       criadoEmRef.current = Date.now();
-      setSlides(data.slides);
+      setSlides((data.slides as Slide[]).map(migrarSlide));
       setSel(0);
     } catch (err) {
       console.error("gerar error:", err);
@@ -153,11 +153,11 @@ export default function Gerar() {
     try {
       const res = await fetch(`/api/regenerar`, {
         method: "POST", headers: await authHeaders(),
-        body: JSON.stringify({ tema, tipo: slides[i].tipo, posicao: i + 1, total: slides.length, nomeMarca: marca.nomeMarca }),
+        body: JSON.stringify({ tema, variante: deriveVariante(slides[i]), posicao: i + 1, total: slides.length, nomeMarca: marca.nomeMarca }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setSlides((p) => p.map((s, j) => (j === i ? data.slide : s)));
+      setSlides((p) => p.map((s, j) => (j === i ? migrarSlide(data.slide as Slide) : s)));
       showUndo("Slide regenerado", () => setSlides((p) => p.map((s, j) => (j === i ? anterior : s))));
     } catch { setErro("Não consegui refazer esse slide. Tente de novo."); }
     finally { setRegenIdx(null); }

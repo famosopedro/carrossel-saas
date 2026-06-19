@@ -178,7 +178,7 @@ export const SLIDE_DEFAULTS: Pick<Slide, "layout" | "splitRatio" | "tituloDecora
 // Infere a variante de um slide antigo (sem campo `variante`) a partir
 // de tipo/imagem/posição. Não destrói nada — só rotula.
 export function deriveVariante(s: Slide): SlideVariante {
-  if (s.variante) return s.variante;
+  if (s.variante && VARIANTES.some((x) => x.v === s.variante)) return s.variante;
   if (s.tipo === "cta") return "cta";
   if (s.imagem) return s.imagemPos === "topo" || s.imagemPos === "base" ? "imagem-destaque" : "capa-imagem";
   return "tipografia";

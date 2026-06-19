@@ -47,21 +47,30 @@ Tema: "${temaS}"
 Total de slides: ${quantidade}
 ${dna ? `\nDNA da marca:\n${dna}\n` : ""}
 
-Crie exatamente ${quantidade} slides. Estrutura:
-- Slide 1: tipo "capa" — gancho forte que faz parar de rolar.
-- Slides do meio: tipo "conteudo" — desenvolvem a ideia, um ponto por slide.
-- Último slide: tipo "cta" — chamada pra ação (comentar, salvar, link na bio).
+Crie exatamente ${quantidade} slides. Cada slide tem uma "variante" (estrutura visual). Escolha a variante que melhor serve o conteúdo:
 
-Cada slide tem:
-- tipo: "capa" | "conteudo" | "cta"
-- titulo: frase de impacto, bold (máx 8 palavras). Sem aspas, sem markdown.
-- corpo: texto de apoio direto (máx 25 palavras). Pode usar quebras de linha (\\n) pra frases curtas separadas. Pode ser "" se o título bastar.
-- subtitulo: UMA frase curta de remate, tom reflexivo/editorial (será exibida em itálico serif). Ex: "E o pior: talvez você ainda não tenha medido quanto." Máx 14 palavras.
+- "tipografia": só texto. Use no slide 1 (capa/gancho) e em ideias que pedem foco. Campos: titulo, corpo, subtitulo.
+- "lista-icones": pontos-chave em lista. Use quando houver 3-5 itens paralelos. Campos: titulo, itens[].
+- "chat": simula uma conversa (ex: cliente x você, pergunta x resposta). Use pra quebrar objeção ou dramatizar. Campos: titulo, mensagens[].
+- "cta": chamada final. Use SEMPRE no último slide. Campos: titulo, subtitulo.
 
-Tom: direto, inteligente, confiante, editorial. Sem emojis, sem exageros, sem hashtags.
+Regras:
+- Slide 1 = "tipografia" (gancho forte que faz parar de rolar).
+- Último slide = "cta".
+- Meio: misture "tipografia", "lista-icones" e "chat" conforme o conteúdo (não repita a mesma variante em sequência sem motivo).
+- NÃO use variantes de imagem (o usuário adiciona imagens depois).
 
-Responda SOMENTE com array JSON válido, sem markdown:
-[{"tipo":"capa","titulo":"...","corpo":"...","subtitulo":"..."}]`;
+Campos:
+- titulo: frase de impacto (máx 8 palavras). Sem aspas. Pode usar **negrito** e ==realce== com moderação.
+- corpo: apoio direto (máx 25 palavras). Pode usar \\n. "" se o título bastar.
+- subtitulo: remate curto, tom reflexivo/editorial, máx 14 palavras (itálico serif).
+- itens: array de 3 a 5 objetos {"icone","texto"}. icone DEVE ser um destes ids: check, star, bolt, heart, target, rocket, lightbulb, shield, clock, chat, trending, dollar, users, gift, flag. texto = máx 10 palavras.
+- mensagens: array de 2 a 4 objetos {"lado","autor","texto"}. lado = "esq" ou "dir" (alterne). autor = rótulo curto (ex: "Cliente", "Você"). texto = máx 18 palavras.
+
+Tom: direto, inteligente, confiante, editorial. Sem emojis, sem hashtags.
+
+Responda SOMENTE com array JSON válido, sem markdown. Inclua só os campos da variante de cada slide:
+[{"variante":"tipografia","titulo":"...","corpo":"...","subtitulo":"..."},{"variante":"lista-icones","titulo":"...","itens":[{"icone":"check","texto":"..."}]},{"variante":"chat","titulo":"...","mensagens":[{"lado":"esq","autor":"Cliente","texto":"..."}]},{"variante":"cta","titulo":"...","subtitulo":"..."}]`;
 
   try {
     const message = await client.messages.create({

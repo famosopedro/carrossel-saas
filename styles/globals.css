@@ -156,9 +156,8 @@ input[type="number"] {
   border-radius: 2px;
 }
 
-/* ── Sistema de hover/transição do editor ──
-   Inline styles não suportam :hover; estas classes dão feedback de mouse
-   a botões/cartões/thumbs sem reescrever os estilos inline existentes. */
+/* Editor hover system. Inline styles do not support :hover; these classes
+   add mouse feedback to buttons/cards/thumbs without rewriting inline styles. */
 .ed-btn {
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
 }
@@ -185,7 +184,7 @@ input[type="number"] {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
-/* Barra de progresso do toast de "Desfazer" — esvazia em 10s (= timeout). */
+/* Undo toast progress bar: depletes over 10s (matches undo timeout). */
 @keyframes undobar {
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
@@ -206,7 +205,7 @@ input[type="number"] {
   .undo-bar { animation: none; }
 }
 
-/* Eyebrow serif-itálico — a assinatura Famoso. Cabeçalho de grupo na sidebar. */
+/* Serif-italic eyebrow: the Famoso signature. Sidebar group header. */
 .ed-eyebrow {
   font-family: "Awesome Serif", Georgia, serif;
   font-style: italic;

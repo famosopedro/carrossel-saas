@@ -70,6 +70,7 @@
   --danger: rgba(220, 80, 80, 0.85);
   --ok: rgba(237, 237, 237, 0.65);
   --btn-disabled: rgba(237, 237, 237, 0.18);
+  --hover: rgba(237, 237, 237, 0.06);
   --stage-bg: radial-gradient(120% 90% at 50% 0%, #242424 0%, #1c1c1c 60%, #141414 100%);
   --shadow-slide: 0 14px 44px rgba(0, 0, 0, 0.5);
 }
@@ -91,6 +92,7 @@ html[data-theme="light"] {
   --danger: #c0392b;
   --ok: #4a4a4a;
   --btn-disabled: #c8c8c8;
+  --hover: rgba(0, 0, 0, 0.045);
   --stage-bg: radial-gradient(120% 90% at 50% 0%, #e4e4e4 0%, #ebebeb 60%, #e0e0e0 100%);
   --shadow-slide: 0 4px 24px rgba(0, 0, 0, 0.10);
 }
@@ -110,6 +112,7 @@ html[data-theme="light"] {
     --danger: #c0392b;
     --ok: #4a4a4a;
     --btn-disabled: #c8c8c8;
+    --hover: rgba(0, 0, 0, 0.045);
     --stage-bg: radial-gradient(120% 90% at 50% 0%, #e4e4e4 0%, #ebebeb 60%, #e0e0e0 100%);
     --shadow-slide: 0 4px 24px rgba(0, 0, 0, 0.10);
   }
@@ -151,6 +154,47 @@ input[type="number"] {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+/* ── Sistema de hover/transição do editor ──
+   Inline styles não suportam :hover; estas classes dão feedback de mouse
+   a botões/cartões/thumbs sem reescrever os estilos inline existentes. */
+.ed-btn {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+}
+.ed-btn:hover:not(:disabled) {
+  background-color: var(--hover);
+  border-color: var(--line2);
+}
+.ed-btn:active:not(:disabled) { transform: translateY(1px); }
+
+/* Botão primário (sólido) — escurece levemente, não clareia */
+.ed-primary {
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.ed-primary:hover:not(:disabled) { filter: brightness(0.92); }
+.ed-primary:active:not(:disabled) { transform: translateY(1px); }
+
+/* Thumbnails do filmstrip / grids clicáveis — levantam ao passar o mouse */
+.ed-thumb {
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.ed-thumb:hover {
+  transform: translateY(-2px);
+  border-color: var(--line2);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* Eyebrow serif-itálico — a assinatura Famoso. Cabeçalho de grupo na sidebar. */
+.ed-eyebrow {
+  font-family: "Awesome Serif", Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.1;
+  color: var(--fg);
+  letter-spacing: 0.01em;
+  margin: 0 0 2px;
 }
 
 /* "Mesa de estúdio" — superfície texturizada onde o canvas descansa.

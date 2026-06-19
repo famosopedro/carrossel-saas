@@ -360,6 +360,7 @@ export default function Gerar() {
           )}
         </div>
 
+        <p className="ed-eyebrow" style={{ marginTop: 4 }}>Conteúdo</p>
         <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px" }}>
           <label style={lblStyle}>Sobre o que é o carrossel?</label>
           <textarea value={tema} onChange={(e) => setTema(e.target.value)} placeholder="Ex: como criar carrosseis com IA em 30s" rows={3} style={taStyle} />
@@ -374,7 +375,7 @@ export default function Gerar() {
           </div>
         </div>
 
-        <button onClick={handleGerar} disabled={loading || !tema.trim()} style={primaryBtn(loading || !tema.trim())}>
+        <button onClick={handleGerar} disabled={loading || !tema.trim()} className="ed-primary" style={primaryBtn(loading || !tema.trim())}>
           {loading ? "Criando seus slides…" : "Gerar com IA →"}
         </button>
         {erro && <p style={{ fontSize: 11, color: "#f87171", margin: 0, lineHeight: 1.5 }}>{erro}</p>}
@@ -382,9 +383,9 @@ export default function Gerar() {
         {temSlides && (
           <>
             <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={lblStyle}>Exportar</label>
-              <button onClick={baixarUm} style={ghostBtn}>↓ Slide atual (PNG)</button>
-              <button onClick={baixarTodos} disabled={exportando} style={ghostBtn}>
+              <p className="ed-eyebrow">Exportar</p>
+              <button onClick={baixarUm} className="ed-btn" style={ghostBtn}>↓ Slide atual (PNG)</button>
+              <button onClick={baixarTodos} disabled={exportando} className="ed-btn" style={ghostBtn}>
                 {exportando ? `⏳ Exportando ${zipProg ?? ""}…` : "↓ Todos (ZIP)"}
               </button>
             </div>
@@ -440,13 +441,13 @@ export default function Gerar() {
                 {slides.map((s, i) => {
                   const ativo = i === sel;
                   return (
-                    <button key={i} onClick={() => setSel(i)} title={`Slide ${i + 1}`} style={{ position: "relative", padding: 0, border: `2px solid ${ativo ? ACCENT : LINE}`, borderRadius: 8, background: "none", cursor: "pointer", lineHeight: 0, overflow: "hidden" }}>
+                    <button key={i} onClick={() => setSel(i)} title={`Slide ${i + 1}`} className="ed-thumb" style={{ position: "relative", padding: 0, border: `2px solid ${ativo ? ACCENT : LINE}`, borderRadius: 8, background: "none", cursor: "pointer", lineHeight: 0, overflow: "hidden" }}>
                       <ScaledSlide slide={s} index={i} total={slides.length} marca={marca} larguraAlvo={62} />
                       <span style={{ position: "absolute", left: 4, bottom: 4, width: 16, height: 16, borderRadius: "50%", background: ativo ? ACCENT : "rgba(0,0,0,0.62)", color: ativo ? BG : FG, fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{i + 1}</span>
                     </button>
                   );
                 })}
-                <button onClick={addSlide} title="Adicionar slide" style={{ width: 62, height: 62 * (DIM[marca.formato].h / DIM[marca.formato].w), border: `1px dashed ${LINE2}`, borderRadius: 8, background: "none", color: MUTED, fontSize: 22, cursor: "pointer" }}>+</button>
+                <button onClick={addSlide} title="Adicionar slide" className="ed-btn" style={{ width: 62, height: 62 * (DIM[marca.formato].h / DIM[marca.formato].w), border: `1px dashed ${LINE2}`, borderRadius: 8, background: "none", color: MUTED, fontSize: 22, cursor: "pointer" }}>+</button>
               </div>
             </div>
 
@@ -455,10 +456,10 @@ export default function Gerar() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <p style={{ ...eyebrow }}>Slide {sel + 1} <span style={{ color: FAINT }}>/ {slides.length}</span></p>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => mover(sel, -1)} disabled={sel === 0} style={iconBtn(sel === 0)}>←</button>
-                  <button onClick={() => mover(sel, 1)} disabled={sel === slides.length - 1} style={iconBtn(sel === slides.length - 1)}>→</button>
-                  <button onClick={() => duplicar(sel)} style={iconBtn(false)}>⧉</button>
-                  <button onClick={() => removeSlide(sel)} disabled={slides.length <= 1} style={iconBtn(slides.length <= 1)}>✕</button>
+                  <button onClick={() => mover(sel, -1)} disabled={sel === 0} className="ed-btn" style={iconBtn(sel === 0)}>←</button>
+                  <button onClick={() => mover(sel, 1)} disabled={sel === slides.length - 1} className="ed-btn" style={iconBtn(sel === slides.length - 1)}>→</button>
+                  <button onClick={() => duplicar(sel)} className="ed-btn" style={iconBtn(false)}>⧉</button>
+                  <button onClick={() => removeSlide(sel)} disabled={slides.length <= 1} className="ed-btn" style={iconBtn(slides.length <= 1)}>✕</button>
                 </div>
               </div>
 
@@ -602,7 +603,7 @@ export default function Gerar() {
                 </>
               )}
 
-              <button onClick={() => regenerarSlide(sel)} disabled={regenIdx !== null} style={{ ...ghostBtn, marginTop: 4 }}>
+              <button onClick={() => regenerarSlide(sel)} disabled={regenIdx !== null} className="ed-btn" style={{ ...ghostBtn, marginTop: 4 }}>
                 {regenIdx === sel ? "Regenerando..." : "↻ Regenerar este slide com IA"}
               </button>
             </div>

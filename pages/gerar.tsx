@@ -401,9 +401,13 @@ export default function Gerar() {
       <main style={{ flex: 1, overflowY: "auto", padding: 28 }}>
         {loading ? (
           <div style={{ display: "flex", gap: 28, alignItems: "flex-start" }}>
-            <div style={{ flexShrink: 0 }}>
-              <div className="skeleton" style={{ width: 360, height: 360 * (DIM[marca.formato].h / DIM[marca.formato].w) }} />
-              <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            {/* espelha o layout carregado (coluna 416 + .stage padding 28 + filmstrip) p/ evitar shift */}
+            <div style={{ flexShrink: 0, width: 416 }}>
+              <div className="skeleton" style={{ width: 150, height: 14, marginBottom: 12 }} />
+              <div className="stage" style={{ padding: 28, display: "flex", justifyContent: "center" }}>
+                <div className="skeleton" style={{ width: 360, height: 360 * (DIM[marca.formato].h / DIM[marca.formato].w) }} />
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
                 {Array.from({ length: quantidade }).map((_, i) => (
                   <div key={i} className="skeleton" style={{ width: 62, height: 62 * (DIM[marca.formato].h / DIM[marca.formato].w) }} />
                 ))}
@@ -624,9 +628,10 @@ export default function Gerar() {
       </div>
 
       {undo && (
-        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", zIndex: 50 }}>
+        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: CARD, border: `1px solid ${LINE}`, borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 8px 24px rgba(0,0,0,0.4)", zIndex: 50, overflow: "hidden" }}>
           <span style={{ fontSize: 12, color: FG }}>{undo.msg}</span>
-          <button onClick={() => { undo.restore(); setUndo(null); }} style={{ fontSize: 12, fontWeight: 700, color: FG, background: "transparent", border: `1px solid ${FG}`, borderRadius: 5, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit" }}>Desfazer</button>
+          <button onClick={() => { undo.restore(); setUndo(null); }} className="ed-btn" style={{ fontSize: 12, fontWeight: 700, color: FG, background: "transparent", border: `1px solid ${FG}`, borderRadius: 5, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit" }}>Desfazer</button>
+          <span key={undo.msg} className="undo-bar" aria-hidden="true" />
         </div>
       )}
     </div>

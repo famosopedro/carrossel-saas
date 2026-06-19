@@ -185,6 +185,27 @@ input[type="number"] {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
+/* Barra de progresso do toast de "Desfazer" — esvazia em 10s (= timeout). */
+@keyframes undobar {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.undo-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--fg);
+  opacity: 0.4;
+  transform-origin: left;
+  animation: undobar 10s linear forwards;
+  border-bottom-left-radius: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .undo-bar { animation: none; }
+}
+
 /* Eyebrow serif-itálico — a assinatura Famoso. Cabeçalho de grupo na sidebar. */
 .ed-eyebrow {
   font-family: "Awesome Serif", Georgia, serif;

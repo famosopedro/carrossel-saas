@@ -1,6 +1,7 @@
 export type Formato = "vertical" | "quadrado";
 export type Tema = "dark" | "light";
 export type TextDec = "none" | "underline" | "line-through";
+export type TextAlign = "left" | "center" | "right";
 export type SlideLayout = "normal" | "split";
 export type NumeracaoPosicao = "bottom-right" | "bottom-left" | "top-right" | "top-left";
 export type NumeracaoEstilo = "numero" | "seta" | "nenhum";
@@ -95,6 +96,13 @@ export type Slide = {
   elementos?: Elemento[];
   itens?: ListaItem[];      // variante lista-icones
   mensagens?: ChatMsg[];    // variante chat
+  // Formatação por campo (setada pela toolbar de rich text — 3.3)
+  tituloAlign?: TextAlign;
+  corpoAlign?: TextAlign;
+  subtituloAlign?: TextAlign;
+  tituloCor?: string;
+  corpoCor?: string;
+  subtituloCor?: string;
 };
 
 export type Carrossel = {

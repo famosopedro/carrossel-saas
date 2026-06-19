@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { SURFACE, CARD, FG, MUTED, FAINT, LINE, LINE2, ACCENT, BG } from "@/lib/ui";
+import { SURFACE, CARD, FG, MUTED, FAINT, LINE, LINE2, ACCENT, BG, BRAND, BRAND_INK } from "@/lib/ui";
 
 type Oferta = {
   eyebrow: string;
@@ -133,7 +133,7 @@ export default function PromoRail() {
               style={{
                 display: "block", textAlign: "center", textDecoration: "none",
                 padding: "12px 0", borderRadius: 8, fontSize: 13, fontWeight: 700,
-                background: "#25D366", color: "#1c1c1c", fontFamily: "inherit",
+                background: BRAND, color: BRAND_INK, fontFamily: "inherit",
               }}
             >
               {o.cta} ↗

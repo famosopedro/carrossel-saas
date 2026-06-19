@@ -6,13 +6,18 @@ export const DIM = {
   quadrado: { w: 1080, h: 1080 },
 };
 
-const TEMAS: Record<Tema, { bg: string; bgGrad: string; fg: string; line: string; sub: string }> = {
+// Cores literais (não CSS vars): os slides são exportados via html-to-image,
+// que não resolve variáveis herdadas. `accent` = verde da marca FAMOSO. —
+// o "traço verde" recorrente. Dark usa o verde claro; light, o verde escuro
+// derivado (#25d366 falha contraste em fundo claro).
+const TEMAS: Record<Tema, { bg: string; bgGrad: string; fg: string; line: string; sub: string; accent: string }> = {
   dark: {
     bg: "#1c1c1c",
     bgGrad: "radial-gradient(120% 80% at 30% 20%, #262626 0%, #1c1c1c 55%, #161616 100%)",
     fg: "#ededed",
     line: "rgba(237,237,237,0.35)",
     sub: "#cfcfcf",
+    accent: "#25d366",
   },
   light: {
     bg: "#e6e7ea",
@@ -20,6 +25,7 @@ const TEMAS: Record<Tema, { bg: string; bgGrad: string; fg: string; line: string
     fg: "#121212",
     line: "rgba(18,18,18,0.3)",
     sub: "#2a2a2a",
+    accent: "#1a7f43",
   },
 };
 

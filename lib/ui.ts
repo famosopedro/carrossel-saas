@@ -15,6 +15,13 @@ export const LINE2   = "var(--line2)";
 export const ACCENT  = "var(--accent)";
 export const DANGER  = "var(--danger)";
 export const OK      = "var(--ok)";
+// Verde da marca FAMOSO. — fill verde + tinta de contraste sobre ele.
+export const BRAND       = "var(--brand)";
+export const BRAND_HOVER = "var(--brand-hover)";
+export const BRAND_INK   = "var(--brand-ink)";
+export const SUCCESS = "var(--success)";
+export const WARNING = "var(--warning)";
+export const ERROR   = "var(--error)";
 
 // Tipografia
 export const SERIF = "'Awesome Serif', Georgia, serif";

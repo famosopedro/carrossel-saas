@@ -6,6 +6,7 @@ import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltim
 import SlideRender, { DIM } from "@/components/SlideRender";
 import PromoRail from "@/components/PromoRail";
 import { exportSlidePng, exportAllZip } from "@/lib/export";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { BG, SURFACE, FG, MUTED, FAINT, LINE, LINE2, CARD, OK, ACCENT, SERIF, eyebrow } from "@/lib/ui";
 
 const SLIDE_OPTIONS = [5, 8, 10];
@@ -34,6 +35,7 @@ function ScaledSlide({ slide, index, total, marca, larguraAlvo }: {
 
 export default function Gerar() {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [tema, setTema] = useState("");
   const [quantidade, setQuantidade] = useState(5);
   const [slides, setSlides] = useState<Slide[]>([]);
@@ -152,6 +154,7 @@ export default function Gerar() {
 
   async function regenerarSlide(i: number) {
     setRegenIdx(i);
+    setErro("");
     const anterior = slides[i];
     try {
       const res = await fetch(`/api/regenerar`, {
@@ -211,10 +214,10 @@ export default function Gerar() {
   return (
     <>
     <Head><title>{tema ? `${tema} — Carrossel | FAMOSO®` : "Gerar carrossel | FAMOSO®"}</title></Head>
-    <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
+    <div style={{ background: BG, color: FG, display: "flex", ...(isMobile ? { flexDirection: "column", height: "auto", minHeight: "calc(100vh - 56px)" } : { height: "calc(100vh - 56px)", overflow: "hidden" }) }}>
 
       {/* SIDEBAR */}
-      <aside className="sidebar-scroll" style={{ width: marcaOpen ? 300 : 270, background: SURFACE, borderRight: `1px solid ${LINE}`, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, height: "100%", overflowY: "auto", transition: "width 0.2s" }}>
+      <aside className="sidebar-scroll" style={{ background: SURFACE, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, transition: "width 0.2s", ...(isMobile ? { width: "100%", boxSizing: "border-box", borderBottom: `1px solid ${LINE}`, height: "auto", overflowY: "visible" } : { width: marcaOpen ? 300 : 270, borderRight: `1px solid ${LINE}`, height: "100%", overflowY: "auto" }) }}>
         {/* Brand card — expansível */}
         <div style={{ borderRadius: 10, border: `1px solid ${LINE}` }}>
           <button
@@ -321,7 +324,7 @@ export default function Gerar() {
                           <img src={src} alt="" style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }} />
                           {ativo && <div style={{ position: "absolute", inset: 0, background: "rgba(237,237,237,0.15)", borderRadius: 3 }} />}
                         </button>
-                        <button title="Remover logo" onClick={() => { const next = (marca.logos || []).filter((_, j) => j !== i); setMarca((prev) => { const n = { ...prev, logos: next, logo: prev.logo === src ? (next[0] || null) : prev.logo }; saveMarca(n); return n; }); }} style={{ position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "none", color: FG, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                        <button title="Remover logo" aria-label="Remover logo" onClick={() => { const next = (marca.logos || []).filter((_, j) => j !== i); setMarca((prev) => { const n = { ...prev, logos: next, logo: prev.logo === src ? (next[0] || null) : prev.logo }; saveMarca(n); return n; }); }} style={{ position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "none", color: FG, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                       </div>
                     );
                   })}
@@ -341,7 +344,7 @@ export default function Gerar() {
                       <div style={{ width: "100%", aspectRatio: "1", background: "rgba(255,255,255,0.05)", borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", border: `1px solid ${LINE}` }}>
                         <img src={src} alt="" style={{ maxWidth: "80%", maxHeight: "80%", objectFit: "contain" }} />
                       </div>
-                      <button title="Remover asset" onClick={() => { const next = (marca.assets||[]).filter((_,j)=>j!==i); setMarca(p=>{const n={...p,assets:next};saveMarca(n);return n;}); }} style={{ position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "rgba(0,0,0,0.8)", border: "none", color: FG, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                      <button title="Remover asset" aria-label="Remover asset" onClick={() => { const next = (marca.assets||[]).filter((_,j)=>j!==i); setMarca(p=>{const n={...p,assets:next};saveMarca(n);return n;}); }} style={{ position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "rgba(0,0,0,0.8)", border: "none", color: FG, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                     </div>
                   ))}
                   <button onClick={() => assetFileRef.current?.click()} style={{ aspectRatio: "1", borderRadius: 5, fontSize: 16, cursor: "pointer", background: "transparent", color: MUTED, border: `1px dashed ${LINE}` }}>+</button>
@@ -367,18 +370,18 @@ export default function Gerar() {
         </div>
 
         <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px" }}>
-          <label style={lblStyle}>Slides</label>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button onClick={() => setQuantidade((q) => Math.max(1, q - 1))} style={{ width: 32, height: 32, borderRadius: 5, border: `1px solid ${LINE}`, background: "transparent", color: FG, fontSize: 18, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-            <span style={{ flex: 1, textAlign: "center" as const, fontSize: 15, fontWeight: 700, color: FG }}>{quantidade}</span>
-            <button onClick={() => setQuantidade((q) => Math.min(30, q + 1))} style={{ width: 32, height: 32, borderRadius: 5, border: `1px solid ${LINE}`, background: "transparent", color: FG, fontSize: 18, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+          <label id="slides-label" style={lblStyle}>Slides</label>
+          <div role="group" aria-labelledby="slides-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setQuantidade((q) => Math.max(1, q - 1))} aria-label="Diminuir número de slides" style={{ width: 44, height: 44, borderRadius: 5, border: `1px solid ${LINE}`, background: "transparent", color: FG, fontSize: 18, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+            <span role="spinbutton" aria-valuenow={quantidade} aria-valuemin={1} aria-valuemax={30} aria-live="polite" style={{ flex: 1, textAlign: "center" as const, fontSize: 15, fontWeight: 700, color: FG }}>{quantidade}</span>
+            <button onClick={() => setQuantidade((q) => Math.min(30, q + 1))} aria-label="Aumentar número de slides" style={{ width: 44, height: 44, borderRadius: 5, border: `1px solid ${LINE}`, background: "transparent", color: FG, fontSize: 18, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
           </div>
         </div>
 
         <button onClick={handleGerar} disabled={loading || !tema.trim()} className="ed-primary" style={primaryBtn(loading || !tema.trim())}>
           {loading ? "Criando seus slides…" : "Gerar com IA →"}
         </button>
-        {erro && <p style={{ fontSize: 11, color: "#f87171", margin: 0, lineHeight: 1.5 }}>{erro}</p>}
+        {erro && <p role="alert" aria-live="assertive" style={{ fontSize: 11, color: "#f87171", margin: 0, lineHeight: 1.5 }}>{erro}</p>}
 
         {temSlides && (
           <>
@@ -393,14 +396,22 @@ export default function Gerar() {
               <span style={{ fontSize: 9 }}>●</span>
               <span>Salvo automaticamente no dashboard</span>
             </div>
+
+            {/* CTA de conversão — visível no fluxo mesmo quando a PromoRail some (<1280px) */}
+            <a href="https://www.famosopedro.com.br/diagnostico" target="_blank" rel="noopener noreferrer"
+              style={{ display: "block", textDecoration: "none", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", padding: "12px 14px" }}>
+              <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: FG, marginBottom: 3 }}>Sua marca vende como deveria?</span>
+              <span style={{ display: "block", fontSize: 11, color: MUTED, lineHeight: 1.45, marginBottom: 8 }}>Diagnóstico gratuito em 3 minutos.</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: ACCENT }}>Fazer diagnóstico grátis →</span>
+            </a>
           </>
         )}
       </aside>
 
       {/* MAIN */}
-      <main style={{ flex: 1, overflowY: "auto", padding: 28 }}>
+      <main style={{ flex: 1, padding: 28, ...(isMobile ? { overflowY: "visible" } : { overflowY: "auto" }) }}>
         {loading ? (
-          <div style={{ display: "flex", gap: 28, alignItems: "flex-start" }}>
+          <div role="status" aria-live="polite" aria-busy="true" style={{ display: "flex", gap: 28, alignItems: "flex-start" }}>
             {/* espelha o layout carregado (coluna 416 + .stage padding 28 + filmstrip) p/ evitar shift */}
             <div style={{ flexShrink: 0, width: 416 }}>
               <div className="skeleton" style={{ width: 150, height: 14, marginBottom: 12 }} />
@@ -422,15 +433,36 @@ export default function Gerar() {
             </div>
           </div>
         ) : !temSlides ? (
-          <div style={{ height: "100%", minHeight: 400, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: MUTED }}>
-            <div style={{ fontSize: 24, opacity: 0.3 }}>▦</div>
-            <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>Comece por um tema. A IA monta os slides; você refina.</p>
+          <div style={{ minHeight: 400, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, color: MUTED, padding: "40px 0" }}>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 24, opacity: 0.3, marginBottom: 8 }}>▦</div>
+              <p style={{ ...eyebrow, fontSize: 18, color: FG, margin: "0 0 6px" }}>Crie seu primeiro carrossel</p>
+              <p style={{ fontSize: 13, margin: 0, color: MUTED }}>Três passos da marca ao post pronto.</p>
+            </div>
+            <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12, maxWidth: 360, width: "100%" }}>
+              {[
+                ["1", "Configure sua marca", "Cores, fontes e logo — uma vez só."],
+                ["2", "Gere com IA", "Escreva o tema ao lado e deixe a IA montar os slides."],
+                ["3", "Exporte", "Baixe em PNG ou ZIP, pronto para postar."],
+              ].map(([n, t, d]) => (
+                <li key={n} style={{ display: "flex", gap: 12, alignItems: "flex-start", background: CARD, border: `1px solid ${LINE}`, borderRadius: 8, padding: "12px 14px" }}>
+                  <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", background: FG, color: BG, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{n}</span>
+                  <span>
+                    <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: FG }}>{t}</span>
+                    <span style={{ display: "block", fontSize: 12, color: MUTED, marginTop: 2, lineHeight: 1.4 }}>{d}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <button onClick={() => router.push("/marca")} className="ed-btn" style={{ padding: "10px 22px", borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: "pointer", background: FG, color: BG, border: "none", fontFamily: "inherit" }}>
+              Configurar marca →
+            </button>
           </div>
         ) : (
-          <div style={{ display: "flex", gap: 28, alignItems: "flex-start" }}>
+          <div style={{ display: "flex", gap: 28, alignItems: "flex-start", ...(isMobile ? { flexDirection: "column" } : {}) }}>
 
             {/* Preview grande (mesa de estúdio) + filmstrip — fixo enquanto o inspetor rola */}
-            <div style={{ flexShrink: 0, width: 416, position: "sticky", top: 0, alignSelf: "flex-start" }}>
+            <div style={{ flexShrink: 0, alignSelf: "flex-start", ...(isMobile ? { width: "100%", position: "static" } : { width: 416, position: "sticky", top: 0 }) }}>
               <p style={{ ...eyebrow, fontSize: 14, color: MUTED, margin: "0 0 12px" }}>Prévia — slide {sel + 1} de {slides.length}</p>
               <div className="stage" style={{ padding: 28, display: "flex", justifyContent: "center" }}>
                 <div style={{ position: "relative", boxShadow: "var(--shadow-slide)", borderRadius: 10 }}>
@@ -447,7 +479,7 @@ export default function Gerar() {
                   return (
                     <button key={i} onClick={() => setSel(i)} title={`Slide ${i + 1}`} className="ed-thumb" style={{ position: "relative", padding: 0, border: `2px solid ${ativo ? ACCENT : LINE}`, borderRadius: 8, background: "none", cursor: "pointer", lineHeight: 0, overflow: "hidden" }}>
                       <ScaledSlide slide={s} index={i} total={slides.length} marca={marca} larguraAlvo={62} />
-                      <span style={{ position: "absolute", left: 4, bottom: 4, width: 16, height: 16, borderRadius: "50%", background: ativo ? ACCENT : "rgba(0,0,0,0.62)", color: ativo ? BG : FG, fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{i + 1}</span>
+                      <span style={{ position: "absolute", left: 4, bottom: 4, width: 16, height: 16, borderRadius: "50%", background: ativo ? ACCENT : "rgba(0,0,0,0.85)", color: ativo ? BG : FG, fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>{i + 1}</span>
                     </button>
                   );
                 })}
@@ -456,14 +488,14 @@ export default function Gerar() {
             </div>
 
             {/* Editor do slide selecionado */}
-            <div style={{ flex: 1, maxWidth: 420 }}>
+            <div style={{ flex: 1, maxWidth: 420, ...(isMobile ? { maxWidth: "100%", width: "100%" } : {}) }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                 <p style={{ ...eyebrow }}>Slide {sel + 1} <span style={{ color: FAINT }}>/ {slides.length}</span></p>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => mover(sel, -1)} disabled={sel === 0} className="ed-btn" style={iconBtn(sel === 0)}>←</button>
-                  <button onClick={() => mover(sel, 1)} disabled={sel === slides.length - 1} className="ed-btn" style={iconBtn(sel === slides.length - 1)}>→</button>
-                  <button onClick={() => duplicar(sel)} className="ed-btn" style={iconBtn(false)}>⧉</button>
-                  <button onClick={() => removeSlide(sel)} disabled={slides.length <= 1} className="ed-btn" style={iconBtn(slides.length <= 1)}>✕</button>
+                  <button onClick={() => mover(sel, -1)} disabled={sel === 0} aria-label="Mover slide para a esquerda" title="Mover para a esquerda" className="ed-btn" style={iconBtn(sel === 0)}>←</button>
+                  <button onClick={() => mover(sel, 1)} disabled={sel === slides.length - 1} aria-label="Mover slide para a direita" title="Mover para a direita" className="ed-btn" style={iconBtn(sel === slides.length - 1)}>→</button>
+                  <button onClick={() => duplicar(sel)} aria-label="Duplicar slide" title="Duplicar slide" className="ed-btn" style={iconBtn(false)}>⧉</button>
+                  <button onClick={() => removeSlide(sel)} disabled={slides.length <= 1} aria-label="Excluir slide" title="Excluir slide" className="ed-btn" style={iconBtn(slides.length <= 1)}>✕</button>
                 </div>
               </div>
 

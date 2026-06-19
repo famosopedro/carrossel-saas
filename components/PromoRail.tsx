@@ -82,6 +82,8 @@ export default function PromoRail() {
       style={{ width: 320, flexShrink: 0, borderLeft: `1px solid ${LINE}`, background: SURFACE, height: "100%", padding: "24px 20px", boxSizing: "border-box", display: "flex", flexDirection: "column" }}
       onMouseEnter={() => { pausado.current = true; }}
       onMouseLeave={() => { pausado.current = false; }}
+      onFocusCapture={() => { pausado.current = true; }}
+      onBlurCapture={() => { pausado.current = false; }}
     >
       <p style={{ fontSize: 14, fontWeight: 600, color: FG, margin: "0 0 14px", letterSpacing: "-0.01em" }}>
         Como o FAMOSO<span style={{ color: ACCENT, fontSize: 11, verticalAlign: "super" }}>®</span> me ajuda
@@ -142,6 +144,32 @@ export default function PromoRail() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Dots de navegação — clicáveis e acessíveis */}
+      <div role="tablist" aria-label="Ofertas" style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
+        {OFERTAS.map((of, i) => {
+          const ativo = i === idx;
+          return (
+            <button
+              key={i}
+              role="tab"
+              aria-selected={ativo}
+              aria-label={`Ver oferta ${i + 1} de ${OFERTAS.length}: ${of.eyebrow}`}
+              onClick={() => setIdx(i)}
+              style={{
+                width: ativo ? 20 : 8,
+                height: 8,
+                borderRadius: 4,
+                padding: 0,
+                border: "none",
+                cursor: "pointer",
+                background: ativo ? ACCENT : LINE2,
+                transition: "width 0.2s, background 0.2s",
+              }}
+            />
+          );
+        })}
       </div>
     </aside>
   );

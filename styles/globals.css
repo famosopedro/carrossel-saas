@@ -62,8 +62,8 @@
   --surface: #222222;
   --card: #2a2a2a;
   --fg: #ededed;
-  --muted: rgba(237, 237, 237, 0.55);
-  --faint: rgba(237, 237, 237, 0.35);
+  --muted: rgba(237, 237, 237, 0.72);
+  --faint: rgba(237, 237, 237, 0.6);
   --line: rgba(237, 237, 237, 0.10);
   --line2: rgba(237, 237, 237, 0.20);
   --accent: #ededed;
@@ -143,7 +143,7 @@ input[type="number"] {
   100% { background-position: 400px 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, #2a2a2a 0%, #333333 50%, #2a2a2a 100%);
+  background: linear-gradient(90deg, var(--card) 0%, var(--surface) 50%, var(--card) 100%);
   background-size: 800px 100%;
   animation: shimmer 1.4s infinite linear;
   border-radius: 8px;
@@ -154,6 +154,24 @@ input[type="number"] {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+/* Skip-link (escondido até foco por teclado) */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 1000;
+  background: var(--fg);
+  color: var(--bg);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 8px;
 }
 
 /* Editor hover system. Inline styles do not support :hover; these classes

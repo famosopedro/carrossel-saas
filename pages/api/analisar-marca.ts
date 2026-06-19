@@ -1,19 +1,38 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import Anthropic from "@anthropic-ai/sdk";
+import { requireAuth, rateLimited } from "@/lib/api-auth";
 
 export const config = {
-  api: { bodyParser: { sizeLimit: "15mb" } },
+  api: { bodyParser: { sizeLimit: "6mb" } },
 };
 
+const ALLOWED_IMAGE = ["image/png", "image/jpeg", "image/gif", "image/webp"] as const;
+const ALLOWED = [...ALLOWED_IMAGE, "application/pdf"];
+const MAX_BASE64 = 6 * 1024 * 1024;
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") return res.status(204).end();
+  // Mesma origem: sem CORS aberto.
   if (req.method !== "POST") return res.status(405).end();
 
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  if (rateLimited(user.id, 10, 60_000)) {
+    return res.status(429).json({ ok: false, error: "Muitas requisições. Aguarde um minuto." });
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ ok: false, error: "Serviço indisponível no momento." });
+  }
+
   const { base64, mimeType } = req.body as { base64: string; mimeType: string };
-  if (!base64 || !mimeType) return res.status(400).json({ error: "missing fields" });
+  if (!base64 || !mimeType) return res.status(400).json({ ok: false, error: "missing fields" });
+  if (!ALLOWED.includes(mimeType)) {
+    return res.status(400).json({ ok: false, error: "Tipo de arquivo não suportado." });
+  }
+  if (base64.length > MAX_BASE64) {
+    return res.status(413).json({ ok: false, error: "Arquivo muito grande." });
+  }
 
   const isPdf = mimeType === "application/pdf";
   const contentBlock = isPdf
@@ -25,13 +44,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         type: "image" as const,
         source: {
           type: "base64" as const,
-          media_type: mimeType as "image/png" | "image/jpeg" | "image/gif" | "image/webp",
+          media_type: mimeType as (typeof ALLOWED_IMAGE)[number],
           data: base64,
         },
       } as const);
 
   const client = new Anthropic();
 
+  try {
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 512,
@@ -64,6 +84,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const parsed = JSON.parse(match ? match[0] : text);
     res.json({ ok: true, config: parsed });
   } catch {
-    res.status(500).json({ ok: false, error: "parse failed", raw: text });
+    res.status(502).json({ ok: false, error: "Não foi possível interpretar a resposta." });
+  }
+  } catch (err) {
+    console.error("analisar-marca:", err);
+    res.status(500).json({ ok: false, error: "Falha ao analisar a marca." });
   }
 }

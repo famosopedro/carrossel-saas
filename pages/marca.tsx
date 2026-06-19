@@ -7,6 +7,8 @@ import { registrarFontesCustom, fileToDataUrl } from "@/lib/fonts";
 import SlideRender, { DIM } from "@/components/SlideRender";
 import PromoRail from "@/components/PromoRail";
 import { BG, FG, MUTED, LINE, CARD, OK, eyebrow } from "@/lib/ui";
+import { useIsMobile } from "@/lib/useIsMobile";
+import { supabase } from "@/lib/supabase";
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -55,6 +57,7 @@ function ColorRow({ label, value, onChange, onRemove, labelEditable, onLabelChan
         <span style={{ fontSize: 11, color: MUTED, width: 64, flexShrink: 0 }}>{label}</span>
       )}
       <input type="color" value={value || "#888888"} onChange={(e) => onChange(e.target.value)}
+        aria-label={`Cor ${label}`}
         style={{ width: 32, height: 28, border: `1px solid ${LINE}`, borderRadius: 4, cursor: "pointer", padding: 2, background: CARD, flexShrink: 0 }} />
       <input type="text" value={value} onChange={(e) => { const v = e.target.value; if (!v || /^#[0-9a-fA-F]{0,6}$/.test(v)) onChange(v); }}
         placeholder="#000000"
@@ -117,6 +120,7 @@ function NumInput({ label, value, min, max, step, unit, onChange }: {
       <div style={{ display: "flex", alignItems: "center", background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, overflow: "hidden", height: 32 }}>
         <input
           type="number" value={value} min={min} max={max} step={step}
+          aria-label={label}
           onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onChange(clamp(v)); }}
           onKeyDown={(e) => {
             if (e.key === "ArrowUp") { e.preventDefault(); onChange(clamp(parseFloat((value + step).toFixed(10))));  }
@@ -126,9 +130,9 @@ function NumInput({ label, value, min, max, step, unit, onChange }: {
         />
         {unit && <span style={{ fontSize: 11, color: MUTED, paddingRight: 8, paddingLeft: 2 }}>{unit}</span>}
         <div style={{ display: "flex", flexDirection: "column", borderLeft: `1px solid ${LINE}`, height: "100%" }}>
-          <button onClick={() => onChange(clamp(parseFloat((value + step).toFixed(10))))} style={{ flex: 1, width: 22, background: "transparent", border: "none", cursor: "pointer", color: MUTED, fontSize: 9, lineHeight: 1, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>▲</button>
+          <button onClick={() => onChange(clamp(parseFloat((value + step).toFixed(10))))} aria-label={`Aumentar ${label}`} style={{ flex: 1, width: 22, background: "transparent", border: "none", cursor: "pointer", color: MUTED, fontSize: 9, lineHeight: 1, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>▲</button>
           <div style={{ height: 1, background: LINE }} />
-          <button onClick={() => onChange(clamp(parseFloat((value - step).toFixed(10))))} style={{ flex: 1, width: 22, background: "transparent", border: "none", cursor: "pointer", color: MUTED, fontSize: 9, lineHeight: 1, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>▼</button>
+          <button onClick={() => onChange(clamp(parseFloat((value - step).toFixed(10))))} aria-label={`Diminuir ${label}`} style={{ flex: 1, width: 22, background: "transparent", border: "none", cursor: "pointer", color: MUTED, fontSize: 9, lineHeight: 1, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>▼</button>
         </div>
       </div>
     </div>
@@ -147,8 +151,10 @@ async function loadCustomFont(file: File, style: "normal" | "italic" = "normal")
 
 export default function MarcaPage() {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [marca, setMarca] = useState<BrandConfig>(DEFAULT_BRAND);
   const [saved, setSaved] = useState(false);
+  const [storageErro, setStorageErro] = useState<string | null>(null);
   const [customFontes, setCustomFontes] = useState<string[]>([]);
   const [customFontesSerif, setCustomFontesSerif] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -274,20 +280,22 @@ export default function MarcaPage() {
         const { base64, mimeType: mt } = await comprimirParaBase64(arquivo);
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 90000);
+        const { data: { session } } = await supabase.auth.getSession();
         const resp = await fetch(apiUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
           body: JSON.stringify({ base64, mimeType: mt }),
           signal: controller.signal,
         });
         clearTimeout(timer);
         const json = await resp.json();
-        console.log("[analisar-marca] resposta:", JSON.stringify(json));
         if (json.ok && json.config) {
           const partial = Object.fromEntries(
             Object.entries(json.config).filter(([, v]) => v !== "" && v != null)
           ) as Partial<BrandConfig>;
-          console.log("[analisar-marca] extraído:", JSON.stringify(partial));
           extraConfig = { ...extraConfig, ...partial };
         } else {
           setErroAnalise(json.error || `Erro ${resp.status}`);
@@ -340,9 +348,10 @@ export default function MarcaPage() {
   function handleSave() {
     const ok = saveMarca(marca);
     if (!ok) {
-      alert("Não foi possível salvar — o armazenamento do navegador está cheio. Remova fontes ou logos pesados e tente de novo.");
+      setStorageErro("Não foi possível salvar — o armazenamento do navegador está cheio. Remova fontes ou logos pesados e tente de novo.");
       return;
     }
+    setStorageErro(null);
     setPerfis(getPerfis());
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -371,7 +380,8 @@ export default function MarcaPage() {
   async function handleUploadSans(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert("Arquivo muito grande. Máximo 5 MB por fonte."); e.target.value = ""; return; }
+    if (file.size > 5 * 1024 * 1024) { setStorageErro("Arquivo muito grande. Máximo 5 MB por fonte."); e.target.value = ""; return; }
+    setStorageErro(null);
     const { name, dataUrl } = await loadCustomFont(file, "normal");
     setCustomFontes((prev) => prev.includes(name) ? prev : [...prev, name]);
     setMarca((prev) => {
@@ -385,7 +395,8 @@ export default function MarcaPage() {
   async function handleUploadSerif(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert("Arquivo muito grande. Máximo 5 MB por fonte."); e.target.value = ""; return; }
+    if (file.size > 5 * 1024 * 1024) { setStorageErro("Arquivo muito grande. Máximo 5 MB por fonte."); e.target.value = ""; return; }
+    setStorageErro(null);
     const { name, dataUrl } = await loadCustomFont(file, "italic");
     setCustomFontesSerif((prev) => prev.includes(name) ? prev : [...prev, name]);
     setMarca((prev) => {
@@ -399,9 +410,9 @@ export default function MarcaPage() {
   return (
     <>
     <Head><title>Identidade Visual | FAMOSO®</title></Head>
-    <div style={{ background: BG, height: "calc(100vh - 56px)", overflow: "hidden", color: FG, display: "flex" }}>
-      <div style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
-        <div style={{ maxWidth: 860, margin: "0 auto", padding: "40px 28px", display: "grid", gridTemplateColumns: "1fr 320px", gap: 48, alignItems: "start" }}>
+    <div style={{ background: BG, color: FG, display: "flex", ...(isMobile ? { flexDirection: "column", height: "auto", minHeight: "calc(100vh - 56px)" } : { height: "calc(100vh - 56px)", overflow: "hidden" }) }}>
+      <div style={{ flex: 1, minWidth: 0, ...(isMobile ? { overflowY: "visible" } : { overflowY: "auto" }) }}>
+        <div style={{ maxWidth: 860, margin: "0 auto", padding: "40px 28px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: isMobile ? 32 : 48, alignItems: "start" }}>
 
         {/* Form */}
         <div>
@@ -438,6 +449,7 @@ export default function MarcaPage() {
                       <button
                         onClick={(e) => { e.stopPropagation(); deletarPerfil(p.id); }}
                         title="Remover perfil"
+                        aria-label={`Remover identidade ${p.nome}`}
                         style={{
                           position: "absolute",
                           right: 6,
@@ -873,12 +885,17 @@ export default function MarcaPage() {
           >
             {saved ? "Salvo ✓" : "Salvar identidade"}
           </button>
+          {storageErro && (
+            <p role="alert" aria-live="assertive" style={{ fontSize: 12, color: "#e55", margin: "12px 0 0", lineHeight: 1.5, maxWidth: 420 }}>
+              ⚠ {storageErro}
+            </p>
+          )}
           </div>
           )}
         </div>
 
         {/* Preview */}
-        <div style={{ position: "sticky", top: 80, opacity: perfilAtivoId == null ? 0.3 : 1, pointerEvents: perfilAtivoId == null ? "none" : "auto", transition: "opacity 0.2s" }}>
+        <div style={{ position: isMobile ? "static" : "sticky", top: 80, opacity: perfilAtivoId == null ? 0.3 : 1, pointerEvents: perfilAtivoId == null ? "none" : "auto", transition: "opacity 0.2s" }}>
           <p style={{ ...eyebrow, fontSize: 16, marginBottom: 16 }}>
             Preview
           </p>

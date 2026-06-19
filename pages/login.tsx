@@ -99,8 +99,9 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label style={lblStyle}>E-mail</label>
+              <label htmlFor="login-email" style={lblStyle}>E-mail</label>
               <input
+                id="login-email"
                 type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 required autoComplete="email" placeholder="seu@email.com"
                 style={inputStyle}
@@ -109,8 +110,9 @@ export default function Login() {
 
             {mode !== "reset" && (
               <div>
-                <label style={lblStyle}>Senha</label>
+                <label htmlFor="login-senha" style={lblStyle}>Senha</label>
                 <input
+                  id="login-senha"
                   type="password" value={senha} onChange={(e) => setSenha(e.target.value)}
                   required autoComplete={mode === "login" ? "current-password" : "new-password"}
                   placeholder="••••••••" minLength={6}
@@ -119,8 +121,8 @@ export default function Login() {
               </div>
             )}
 
-            {erro && <p style={{ fontSize: 12, color: "#f87171", margin: 0 }}>{erro}</p>}
-            {ok && <p style={{ fontSize: 12, color: "#4ade80", margin: 0 }}>{ok}</p>}
+            {erro && <p role="alert" aria-live="assertive" style={{ fontSize: 12, color: "#f87171", margin: 0 }}>{erro}</p>}
+            {ok && <p role="status" aria-live="polite" style={{ fontSize: 12, color: "#4ade80", margin: 0 }}>{ok}</p>}
 
             <button
               type="submit" disabled={loading}

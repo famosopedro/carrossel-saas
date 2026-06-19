@@ -18,8 +18,13 @@ function AppInner({ Component, pageProps }: AppProps) {
 
   return (
     <ProtectedRoute>
+      {showNav && (
+        <a href="#conteudo" className="skip-link">Pular para o conteúdo</a>
+      )}
       {showNav && <Nav />}
-      <Component {...pageProps} />
+      <div id="conteudo">
+        <Component {...pageProps} />
+      </div>
     </ProtectedRoute>
   );
 }

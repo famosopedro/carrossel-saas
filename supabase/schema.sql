@@ -11,8 +11,9 @@ create table if not exists public.marcas (
 
 alter table public.marcas enable row level security;
 
+drop policy if exists "users see own marcas" on public.marcas;
 create policy "users see own marcas" on public.marcas
-  for all using (auth.uid() = user_id);
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Carrosseis por usuário
 create table if not exists public.carrosseis (
@@ -27,8 +28,9 @@ create table if not exists public.carrosseis (
 
 alter table public.carrosseis enable row level security;
 
+drop policy if exists "users see own carrosseis" on public.carrosseis;
 create policy "users see own carrosseis" on public.carrosseis
-  for all using (auth.uid() = user_id);
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Trigger para updated_at automático
 create or replace function public.set_updated_at()

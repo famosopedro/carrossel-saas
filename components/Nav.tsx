@@ -151,6 +151,8 @@ export default function Nav() {
                 key={t}
                 onClick={() => handleTheme(t)}
                 title={label}
+                aria-label={`Tema ${label.toLowerCase()}`}
+                aria-pressed={active}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
                   width: 28, height: 28, borderRadius: 6,

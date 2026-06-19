@@ -50,12 +50,35 @@ export type CustomFont = { name: string; dataUrl: string; style: "normal" | "ita
 
 export type SlideTipo = "capa" | "conteudo" | "cta";
 
+// As 6 estruturas-alvo do editor. `variante` é o eixo primário; `tipo`/`layout`
+// continuam por compatibilidade com carrosséis antigos (migração os preenche).
+export type SlideVariante =
+  | "capa-imagem"      // 1. imagem de fundo (capa de impacto)
+  | "tipografia"       // 2. só texto
+  | "lista-icones"     // 3. lista com ícones em chip
+  | "imagem-destaque"  // 4. imagem no topo + texto
+  | "chat"             // 5. balões de conversa
+  | "cta";             // 6. chamada final
+
+export const VARIANTES: { v: SlideVariante; label: string }[] = [
+  { v: "capa-imagem", label: "Capa" },
+  { v: "tipografia", label: "Texto" },
+  { v: "lista-icones", label: "Lista" },
+  { v: "imagem-destaque", label: "Imagem" },
+  { v: "chat", label: "Chat" },
+  { v: "cta", label: "CTA" },
+];
+
+export type ListaItem = { icone: string; texto: string };
+export type ChatMsg = { lado: "esq" | "dir"; autor: string; texto: string };
+
 export type ImagemPos = "fundo" | "topo" | "base" | "direita";
 export type Elemento = { src: string; x: number; y: number; tamanho: number; rotacao: number };
 
 export type Slide = {
   tipo: SlideTipo;
   layout: SlideLayout;
+  variante?: SlideVariante; // opcional p/ back-compat; migrarSlide preenche
   splitRatio: number;
   titulo: string;
   corpo: string;
@@ -67,8 +90,11 @@ export type Slide = {
   imagem?: string | null;
   imagemPos?: ImagemPos;
   imagemOpacidade?: number;
+  imagemAlt?: string;       // alt editável da imagem (a11y)
   textoClaro?: boolean;
   elementos?: Elemento[];
+  itens?: ListaItem[];      // variante lista-icones
+  mensagens?: ChatMsg[];    // variante chat
 };
 
 export type Carrossel = {
@@ -138,6 +164,56 @@ export const SLIDE_DEFAULTS: Pick<Slide, "layout" | "splitRatio" | "tituloDecora
   imagemPos: "fundo",
   imagemOpacidade: 0.35,
 };
+
+// ── Variantes: derivação (migração) + criação de slide novo ──
+
+// Infere a variante de um slide antigo (sem campo `variante`) a partir
+// de tipo/imagem/posição. Não destrói nada — só rotula.
+export function deriveVariante(s: Slide): SlideVariante {
+  if (s.variante) return s.variante;
+  if (s.tipo === "cta") return "cta";
+  if (s.imagem) return s.imagemPos === "topo" || s.imagemPos === "base" ? "imagem-destaque" : "capa-imagem";
+  return "tipografia";
+}
+
+// Garante que um slide tem todos os campos das variantes (idempotente).
+export function migrarSlide(s: Slide): Slide {
+  return {
+    ...SLIDE_DEFAULTS,
+    ...s,
+    variante: deriveVariante(s),
+    itens: s.itens ?? [],
+    mensagens: s.mensagens ?? [],
+  };
+}
+
+// Cria um slide novo já no formato de uma variante, com conteúdo de exemplo.
+export function novoSlide(variante: SlideVariante): Slide {
+  const base: Slide = {
+    tipo: variante === "cta" ? "cta" : variante === "capa-imagem" ? "capa" : "conteudo",
+    variante,
+    titulo: "Novo slide",
+    corpo: "",
+    subtitulo: "",
+    itens: [],
+    mensagens: [],
+    ...SLIDE_DEFAULTS,
+  };
+  switch (variante) {
+    case "capa-imagem":
+      return { ...base, titulo: "Título de impacto", corpo: "Subtexto da capa", imagemPos: "fundo", imagemOpacidade: 0.5 };
+    case "tipografia":
+      return { ...base, titulo: "Uma ideia forte", corpo: "Desenvolva o raciocínio aqui em um parágrafo confortável de ler." };
+    case "lista-icones":
+      return { ...base, titulo: "Pontos-chave", itens: [{ icone: "check", texto: "Primeiro ponto" }, { icone: "star", texto: "Segundo ponto" }, { icone: "bolt", texto: "Terceiro ponto" }] };
+    case "imagem-destaque":
+      return { ...base, titulo: "Com imagem", corpo: "Texto que explica a imagem acima.", imagemPos: "topo", imagemOpacidade: 1 };
+    case "chat":
+      return { ...base, titulo: "A conversa", mensagens: [{ lado: "esq", autor: "Paciente", texto: "Tenho uma dúvida…" }, { lado: "dir", autor: "Você", texto: "Pode perguntar!" }] };
+    case "cta":
+      return { ...base, titulo: "Vamos conversar?", subtitulo: "Chame no link da bio." };
+  }
+}
 
 export const FONTES = [
   "Neue Haas Grotesk",
@@ -229,7 +305,9 @@ export function getCarrosseis(): Carrossel[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem("famoso_carrosseis");
-    return raw ? JSON.parse(raw) : [];
+    const list: Carrossel[] = raw ? JSON.parse(raw) : [];
+    // migra slides antigos para o formato de variantes (idempotente)
+    return list.map((c) => ({ ...c, slides: (c.slides || []).map(migrarSlide) }));
   } catch {
     return [];
   }

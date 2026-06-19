@@ -1,3 +1,5 @@
+import { pushSoon } from "./sync";
+
 export type Formato = "vertical" | "quadrado";
 export type Tema = "dark" | "light";
 export type TextDec = "none" | "underline" | "line-through";
@@ -261,7 +263,7 @@ export function getPerfis(): BrandProfile[] {
 }
 
 export function savePerfis(perfis: BrandProfile[]): void {
-  try { localStorage.setItem("famoso_perfis", JSON.stringify(perfis)); } catch {}
+  try { localStorage.setItem("famoso_perfis", JSON.stringify(perfis)); pushSoon(); } catch {}
 }
 
 export function getPerfilAtivoId(): string {
@@ -270,7 +272,7 @@ export function getPerfilAtivoId(): string {
 }
 
 export function setPerfilAtivoId(id: string): void {
-  try { localStorage.setItem("famoso_perfil_ativo", id); } catch {}
+  try { localStorage.setItem("famoso_perfil_ativo", id); pushSoon(); } catch {}
 }
 
 export function getMarca(): BrandConfig {
@@ -298,6 +300,7 @@ export function saveMarca(config: BrandConfig): boolean {
     }
     savePerfis(perfis);
     localStorage.setItem("famoso_marca", JSON.stringify(config));
+    pushSoon();
     return true;
   } catch {
     return false;
@@ -332,6 +335,7 @@ export function saveCarrossel(c: Carrossel): boolean {
   else list.unshift(c);
   try {
     localStorage.setItem("famoso_carrosseis", JSON.stringify(list.slice(0, 50)));
+    pushSoon();
     return true;
   } catch {
     return false;
@@ -341,6 +345,7 @@ export function saveCarrossel(c: Carrossel): boolean {
 export function deleteCarrossel(id: string): void {
   const list = getCarrosseis().filter((c) => c.id !== id);
   localStorage.setItem("famoso_carrosseis", JSON.stringify(list));
+  pushSoon();
 }
 
 // id do último carrossel aberto/editado — pra retomar rascunho ao voltar pro /gerar
@@ -350,5 +355,5 @@ export function getUltimoId(): string | null {
 }
 
 export function setUltimoId(id: string): void {
-  try { localStorage.setItem("famoso_ultimo_id", id); } catch {}
+  try { localStorage.setItem("famoso_ultimo_id", id); pushSoon(); } catch {}
 }

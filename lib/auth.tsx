@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
+import { hydrate, clearSyncUser } from "./sync";
 
 type AuthCtx = {
   user: User | null;
@@ -20,8 +21,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Atualiza em mudanças futuras (refresh de token, signOut em outra aba).
     // NÃO controla loading inicial — quem manda nisso é o init() abaixo.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      if (event === "SIGNED_OUT") clearSyncUser();
     });
 
     async function init() {
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setOauthError(error.message);
           } else {
             setSession(data.session);
+            if (data.session?.user) await hydrate(data.session.user.id);
           }
         } else {
           setOauthError("Token incompleto recebido do provedor. Tente novamente.");
@@ -59,6 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         const { data } = await supabase.auth.getSession();
         setSession(data.session);
+        // Carrega o workspace da nuvem ANTES de liberar — evita que as páginas
+        // leiam o localStorage antes da hidratação (tolerante a falha).
+        if (data.session?.user) await hydrate(data.session.user.id);
       }
       // Só libera DEPOIS de resolver — garante que loading=false já tem o user certo
       setLoading(false);

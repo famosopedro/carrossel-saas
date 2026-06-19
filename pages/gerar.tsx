@@ -2,21 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
-import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, DEFAULT_BRAND, SLIDE_DEFAULTS, FONTES, FONTES_SERIF, PESOS, type BrandConfig, type Slide, type SlideTipo, type TextDec, type SlideLayout, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
+import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, DEFAULT_BRAND, FONTES, FONTES_SERIF, PESOS, novoSlide, deriveVariante, VARIANTES, type BrandConfig, type Slide, type SlideVariante, type ListaItem, type ChatMsg, type TextAlign, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
 import SlideRender, { DIM } from "@/components/SlideRender";
+import RichField from "@/components/RichField";
+import IconPicker from "@/components/IconPicker";
 import PromoRail from "@/components/PromoRail";
 import { exportSlidePng, exportAllZip } from "@/lib/export";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { BG, SURFACE, FG, MUTED, FAINT, LINE, LINE2, CARD, OK, ACCENT, SERIF, eyebrow } from "@/lib/ui";
 
-const SLIDE_OPTIONS = [5, 8, 10];
-const TIPOS: { v: SlideTipo; label: string }[] = [
-  { v: "capa", label: "Capa" },
-  { v: "conteudo", label: "Conteúdo" },
-  { v: "cta", label: "CTA" },
-];
-
-const SLIDE_VAZIO: Slide = { tipo: "conteudo", titulo: "Novo slide", corpo: "", subtitulo: "", ...SLIDE_DEFAULTS };
 
 // Slide escalado para caber no espaço dado
 function ScaledSlide({ slide, index, total, marca, larguraAlvo }: {
@@ -173,8 +167,39 @@ export default function Gerar() {
     setSlides((p) => p.map((s, j) => (j === i ? { ...s, [field]: value } : s)));
   }
 
+  function setVariante(v: SlideVariante) {
+    setSlides((p) => p.map((s, j) => {
+      if (j !== sel) return s;
+      const next: Slide = { ...s, variante: v };
+      if (v === "lista-icones" && !(next.itens && next.itens.length)) next.itens = [{ icone: "check", texto: "" }];
+      if (v === "chat" && !(next.mensagens && next.mensagens.length)) next.mensagens = [{ lado: "esq", autor: "", texto: "" }];
+      return next;
+    }));
+  }
+
+  // Lê imagem do disco, reduz p/ ≤1080px e devolve dataURL (reuso capa + destaque).
+  function pickImage(cb: (dataUrl: string) => void) {
+    const inp = document.createElement("input");
+    inp.type = "file"; inp.accept = "image/*";
+    inp.onchange = () => {
+      const file = inp.files?.[0]; if (!file) return;
+      const img = new Image(); const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const maxW = 1080; const scale = img.width > maxW ? maxW / img.width : 1;
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width * scale; canvas.height = img.height * scale;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const isPng = file.type === "image/png" || file.type === "image/webp";
+        cb(canvas.toDataURL(isPng ? "image/png" : "image/jpeg", 0.82));
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    };
+    inp.click();
+  }
+
   function addSlide() {
-    setSlides((p) => { const n = [...p, { ...SLIDE_VAZIO }]; setSel(n.length - 1); return n; });
+    setSlides((p) => { const n = [...p, novoSlide("tipografia")]; setSel(n.length - 1); return n; });
   }
   function removeSlide(i: number) {
     const removido = slides[i];
@@ -208,6 +233,7 @@ export default function Gerar() {
 
   const temSlides = slides.length > 0;
   const atual = slides[sel];
+  const vAtual: SlideVariante = atual ? deriveVariante(atual) : "tipografia";
   const fontesSans = [...FONTES, ...(marca.customFonts || []).filter((f) => f.style === "normal").map((f) => f.name)].filter((v, i, a) => a.indexOf(v) === i);
   const fontesSerif = [...FONTES_SERIF, ...(marca.customFonts || []).filter((f) => f.style === "italic").map((f) => f.name)].filter((v, i, a) => a.indexOf(v) === i);
 
@@ -499,29 +525,15 @@ export default function Gerar() {
                 </div>
               </div>
 
-              <label style={lblStyle}>Tipo</label>
-              <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
-                {TIPOS.map((t) => (
-                  <button key={t.v} onClick={() => update(sel, "tipo", t.v)} style={{ flex: 1, padding: "7px 0", borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: atual.tipo === t.v ? FG : "transparent", color: atual.tipo === t.v ? BG : MUTED, border: `1px solid ${atual.tipo === t.v ? FG : LINE}` }}>{t.label}</button>
-                ))}
+              <label style={lblStyle}>Estrutura do slide</label>
+              <div role="group" aria-label="Estrutura do slide" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 18 }}>
+                {VARIANTES.map((t) => {
+                  const ativo = vAtual === t.v;
+                  return (
+                    <button key={t.v} onClick={() => setVariante(t.v)} aria-pressed={ativo} style={{ padding: "8px 0", borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: ativo ? FG : "transparent", color: ativo ? BG : MUTED, border: `1px solid ${ativo ? FG : LINE}` }}>{t.label}</button>
+                  );
+                })}
               </div>
-
-              <label style={lblStyle}>Layout</label>
-              <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
-                {([["normal", "Normal"], ["split", "Split ½"]] as [SlideLayout, string][]).map(([v, lbl]) => (
-                  <button key={v} onClick={() => update(sel, "layout", v)} style={{ flex: 1, padding: "7px 0", borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: atual.layout === v ? FG : "transparent", color: atual.layout === v ? BG : MUTED, border: `1px solid ${atual.layout === v ? FG : LINE}` }}>{lbl}</button>
-                ))}
-              </div>
-
-              {atual.layout === "split" && (
-                <div style={{ marginBottom: 18 }}>
-                  <label style={{ ...lblStyle, marginBottom: 6 }}>Divisão dark/light</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <input type="range" min={0.3} max={0.8} step={0.01} value={atual.splitRatio} onChange={(e) => update(sel, "splitRatio", parseFloat(e.target.value))} style={{ flex: 1, accentColor: FG, cursor: "pointer" }} />
-                    <span style={{ fontSize: 11, fontFamily: "monospace", color: FG, width: 40, textAlign: "right" }}>{Math.round((atual.splitRatio ?? 0.58) * 100)}%</span>
-                  </div>
-                </div>
-              )}
 
               <label style={lblStyle}>Tema deste slide</label>
               <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
@@ -533,109 +545,95 @@ export default function Gerar() {
                 })}
               </div>
 
-              <label style={lblStyle}>Título <span style={{ textTransform: "none", color: MUTED, fontWeight: 400 }}>— bold grande</span></label>
-              <textarea value={atual.titulo} onChange={(e) => update(sel, "titulo", e.target.value)} rows={2} style={{ ...taStyle, marginBottom: 16 }} />
-
-              <label style={lblStyle}>Corpo <span style={{ textTransform: "none", color: MUTED, fontWeight: 400 }}>— Enter quebra linha</span></label>
-              <textarea value={atual.corpo} onChange={(e) => update(sel, "corpo", e.target.value)} rows={3} style={{ ...taStyle, marginBottom: 16 }} />
-
-              <label style={lblStyle}>Subtítulo <span style={{ textTransform: "none", color: MUTED, fontWeight: 400 }}>— itálico serif</span></label>
-              <textarea value={atual.subtitulo} onChange={(e) => update(sel, "subtitulo", e.target.value)} rows={2} style={{ ...taStyle, marginBottom: 16 }} />
-
-              <label style={lblStyle}>Decorações</label>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                <DecRow label="Título" value={atual.tituloDecoracao} onChange={(v) => update(sel, "tituloDecoracao", v)} />
-                <DecRow label="Corpo" value={atual.corpoDecoracao} onChange={(v) => update(sel, "corpoDecoracao", v)} />
-                <DecRow label="Serif" value={atual.serifDecoracao} onChange={(v) => update(sel, "serifDecoracao", v)} />
-              </div>
-              <p style={{ fontSize: 10, color: MUTED, margin: "0 0 16px", lineHeight: 1.5 }}>
-                No corpo: <code style={{ background: "rgba(237,237,237,0.08)", padding: "1px 4px", borderRadius: 3 }}>**bold**</code> · <code style={{ background: "rgba(237,237,237,0.08)", padding: "1px 4px", borderRadius: 3 }}>__underline__</code> · <code style={{ background: "rgba(237,237,237,0.08)", padding: "1px 4px", borderRadius: 3 }}>~~riscado~~</code>
-              </p>
-
-              {/* IMAGEM */}
-              <label style={{ ...lblStyle, marginTop: 8 }}>Imagem</label>
-              {atual.imagem ? (
-                <div style={{ marginBottom: 12 }}>
-                  <img src={atual.imagem} alt="" style={{ width: "100%", height: 80, objectFit: "cover", borderRadius: 6, marginBottom: 8 }} />
-                  <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                    {(["fundo", "topo", "base", "direita"] as const).map((p) => {
-                      const titles = { fundo: "Imagem de fundo (full bleed)", topo: "Imagem no topo do slide", base: "Imagem na base do slide", direita: "Imagem na metade direita" };
-                      return <button key={p} title={titles[p]} onClick={() => update(sel, "imagemPos", p)} style={{ flex: 1, padding: "5px 0", borderRadius: 4, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: (atual.imagemPos ?? "fundo") === p ? FG : CARD, color: (atual.imagemPos ?? "fundo") === p ? BG : MUTED, border: `1px solid ${(atual.imagemPos ?? "fundo") === p ? FG : LINE}` }}>{p}</button>;
-                    })}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 10, color: MUTED, flexShrink: 0 }}>Opacidade</span>
-                    <input type="range" min={0.05} max={1} step={0.05} value={atual.imagemOpacidade ?? 0.35} onChange={(e) => update(sel, "imagemOpacidade", parseFloat(e.target.value))} style={{ flex: 1, accentColor: FG, cursor: "pointer" }} />
-                    <span style={{ fontSize: 10, fontFamily: "monospace", color: FG, width: 30, textAlign: "right" as const }}>{Math.round((atual.imagemOpacidade ?? 0.35) * 100)}%</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                    <button onClick={() => update(sel, "textoClaro", true)} style={{ flex: 1, padding: "5px 0", borderRadius: 4, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", background: atual.textoClaro === true ? "#ededed" : CARD, color: atual.textoClaro === true ? "#1c1c1c" : MUTED, border: `1px solid ${atual.textoClaro === true ? "#ededed" : LINE}` }}>A claro</button>
-                    <button onClick={() => update(sel, "textoClaro", false)} style={{ flex: 1, padding: "5px 0", borderRadius: 4, fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", background: atual.textoClaro === false ? "#1c1c1c" : CARD, color: atual.textoClaro === false ? "#ededed" : MUTED, border: `1px solid ${atual.textoClaro === false ? "#ededed" : LINE}` }}>A escuro</button>
-                    <button onClick={() => update(sel, "textoClaro", undefined)} style={{ flex: 1, padding: "5px 0", borderRadius: 4, fontSize: 10, cursor: "pointer", fontFamily: "inherit", background: atual.textoClaro == null ? FG : CARD, color: atual.textoClaro == null ? BG : MUTED, border: `1px solid ${atual.textoClaro == null ? FG : LINE}` }}>auto</button>
-                  </div>
-                  <button onClick={() => update(sel, "imagem", null)} style={{ fontSize: 10, color: MUTED, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>remover imagem</button>
-                </div>
-              ) : (
-                <button style={{ ...ghostBtn, marginBottom: 12, fontSize: 11 }} onClick={() => {
-                  const inp = document.createElement("input");
-                  inp.type = "file";
-                  inp.accept = "image/*";
-                  inp.onchange = () => {
-                    const file = inp.files?.[0];
-                    if (!file) return;
-                    const img = new Image();
-                    const url = URL.createObjectURL(file);
-                    img.onload = () => {
-                      const maxW = 1080;
-                      const scale = img.width > maxW ? maxW / img.width : 1;
-                      const canvas = document.createElement("canvas");
-                      canvas.width = img.width * scale;
-                      canvas.height = img.height * scale;
-                      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-                      // PNG e WebP preservam transparência; demais formatos usam JPEG
-                      const isPng = file.type === "image/png" || file.type === "image/webp";
-                      update(sel, "imagem", canvas.toDataURL(isPng ? "image/png" : "image/jpeg", 0.82));
-                      URL.revokeObjectURL(url);
-                    };
-                    img.src = url;
-                  };
-                  inp.click();
-                }}>+ Adicionar imagem</button>
+              {/* IMAGEM (capa e imagem-destaque) */}
+              {(vAtual === "capa-imagem" || vAtual === "imagem-destaque") && (
+                <>
+                  <label style={lblStyle}>Imagem</label>
+                  {atual.imagem ? (
+                    <div style={{ marginBottom: 16 }}>
+                      <img src={atual.imagem} alt="" style={{ width: "100%", height: 80, objectFit: "cover", borderRadius: 6, marginBottom: 8 }} />
+                      {vAtual === "capa-imagem" && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                          <span style={{ fontSize: 10, color: MUTED, flexShrink: 0 }}>Opacidade</span>
+                          <input type="range" min={0.1} max={1} step={0.05} value={atual.imagemOpacidade ?? 1} onChange={(e) => update(sel, "imagemOpacidade", parseFloat(e.target.value))} aria-label="Opacidade da imagem" style={{ flex: 1, accentColor: FG, cursor: "pointer" }} />
+                          <span style={{ fontSize: 10, fontFamily: "monospace", color: FG, width: 30, textAlign: "right" as const }}>{Math.round((atual.imagemOpacidade ?? 1) * 100)}%</span>
+                        </div>
+                      )}
+                      <label htmlFor="f-alt" style={{ ...lblStyle, marginBottom: 6 }}>Texto alternativo (alt)</label>
+                      <input id="f-alt" value={atual.imagemAlt ?? ""} onChange={(e) => update(sel, "imagemAlt", e.target.value)} placeholder="Descreva a imagem para leitores de tela" style={{ ...taStyle, marginBottom: 8 }} />
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => pickImage((d) => update(sel, "imagem", d))} className="ed-btn" style={{ ...ghostBtn, flex: 1 }}>Substituir</button>
+                        <button onClick={() => update(sel, "imagem", null)} className="ed-btn" style={{ ...ghostBtn, flex: 1 }}>Remover</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button className="ed-btn" style={{ ...ghostBtn, marginBottom: 16, fontSize: 12 }} onClick={() => pickImage((d) => update(sel, "imagem", d))}>+ Adicionar imagem</button>
+                  )}
+                </>
               )}
 
-              {/* ELEMENTOS / ASSETS */}
-              {(marca.assets || []).length > 0 && (
+              {/* TÍTULO — todas as variantes */}
+              <RichField id="f-titulo" label="Título" hint="bold grande" value={atual.titulo} onChange={(v) => update(sel, "titulo", v)} rows={2}
+                align={atual.tituloAlign} onAlign={(a) => update(sel, "tituloAlign", a)}
+                cor={atual.tituloCor} onCor={(c) => update(sel, "tituloCor", c)} />
+
+              {/* CORPO — capa (subtexto), tipografia, imagem-destaque */}
+              {(vAtual === "capa-imagem" || vAtual === "tipografia" || vAtual === "imagem-destaque") && (
+                <RichField id="f-corpo" label={vAtual === "capa-imagem" ? "Subtexto" : "Texto"} hint="Enter quebra linha" value={atual.corpo} onChange={(v) => update(sel, "corpo", v)} rows={3}
+                  align={atual.corpoAlign} onAlign={(a) => update(sel, "corpoAlign", a)}
+                  cor={atual.corpoCor} onCor={(c) => update(sel, "corpoCor", c)} />
+              )}
+
+              {/* SUBTÍTULO serif — tipografia */}
+              {vAtual === "tipografia" && (
+                <RichField id="f-sub" label="Subtítulo" hint="itálico serif" value={atual.subtitulo} onChange={(v) => update(sel, "subtitulo", v)} rows={2}
+                  cor={atual.subtituloCor} onCor={(c) => update(sel, "subtituloCor", c)} />
+              )}
+
+              {/* CHAMADA — cta */}
+              {vAtual === "cta" && (
+                <RichField id="f-chamada" label="Chamada" hint="itálico serif" value={atual.subtitulo} onChange={(v) => update(sel, "subtitulo", v)} rows={2}
+                  cor={atual.subtituloCor} onCor={(c) => update(sel, "subtituloCor", c)} />
+              )}
+
+              {/* ITENS — lista-icones */}
+              {vAtual === "lista-icones" && (
                 <>
-                  <label style={{ ...lblStyle, marginTop: 8 }}>Elementos</label>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5, marginBottom: 8 }}>
-                    {(marca.assets || []).map((src, i) => (
-                      <button key={i} onClick={() => {
-                        const els = atual.elementos ?? [];
-                        update(sel, "elementos", [...els, { src, x: 50, y: 50, tamanho: 200, rotacao: 0 }]);
-                      }} style={{ aspectRatio: "1", borderRadius: 5, cursor: "pointer", background: CARD, border: `1px solid ${LINE}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: 4 }}>
-                        <img src={src} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
-                      </button>
+                  <label style={lblStyle}>Itens</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                    {(atual.itens ?? []).map((it, ii) => (
+                      <div key={ii} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <IconPicker value={it.icone} onChange={(id) => update(sel, "itens", (atual.itens ?? []).map((x, j) => j === ii ? { ...x, icone: id } : x))} />
+                        <input value={it.texto} onChange={(e) => update(sel, "itens", (atual.itens ?? []).map((x, j) => j === ii ? { ...x, texto: e.target.value } : x))} placeholder="Texto do item" aria-label={`Texto do item ${ii + 1}`} style={{ ...taStyle, flex: 1 }} />
+                        <button onClick={() => update(sel, "itens", (atual.itens ?? []).filter((_, j) => j !== ii))} aria-label={`Remover item ${ii + 1}`} className="ed-btn" style={iconBtn(false)}>✕</button>
+                      </div>
                     ))}
                   </div>
-                  {(atual.elementos ?? []).map((el, ei) => (
-                    <div key={ei} style={{ background: CARD, borderRadius: 6, padding: "8px 10px", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                        <img src={el.src} alt="" style={{ width: 28, height: 28, objectFit: "contain" }} />
-                        <span style={{ fontSize: 10, color: MUTED, flex: 1 }}>Elemento {ei + 1}</span>
-                        <button onClick={() => update(sel, "elementos", (atual.elementos ?? []).filter((_, j) => j !== ei))} style={{ fontSize: 10, color: MUTED, background: "none", border: "none", cursor: "pointer" }}>✕</button>
-                      </div>
-                      {([["x", "X", 0, 100], ["y", "Y", 0, 100], ["tamanho", "Tam", 40, 1080], ["rotacao", "Rot", -180, 180]] as const).map(([key, lbl, min, max]) => (
-                        <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                          <span style={{ fontSize: 10, color: MUTED, width: 24, flexShrink: 0 }}>{lbl}</span>
-                          <input type="range" min={min} max={max} step={key === "rotacao" ? 1 : key === "tamanho" ? 10 : 1} value={el[key]} onChange={(e) => {
-                            const next = (atual.elementos ?? []).map((e2, j) => j === ei ? { ...e2, [key]: parseFloat(e.target.value) } : e2);
-                            update(sel, "elementos", next);
-                          }} style={{ flex: 1, accentColor: FG, cursor: "pointer" }} />
-                          <span style={{ fontSize: 10, fontFamily: "monospace", color: FG, width: 32, textAlign: "right" as const }}>{el[key]}{key === "rotacao" ? "°" : key === "x" || key === "y" ? "%" : "px"}</span>
+                  <button onClick={() => update(sel, "itens", [...(atual.itens ?? []), { icone: "check", texto: "" } as ListaItem])} className="ed-btn" style={{ ...ghostBtn, marginBottom: 16 }}>+ Adicionar item</button>
+                </>
+              )}
+
+              {/* MENSAGENS — chat */}
+              {vAtual === "chat" && (
+                <>
+                  <label style={lblStyle}>Mensagens</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
+                    {(atual.mensagens ?? []).map((m, mi) => (
+                      <div key={mi} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 8, padding: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                          <div role="group" aria-label={`Lado da mensagem ${mi + 1}`} style={{ display: "flex", gap: 4 }}>
+                            {([["esq", "Esq."], ["dir", "Dir."]] as const).map(([ld, lbl]) => (
+                              <button key={ld} onClick={() => update(sel, "mensagens", (atual.mensagens ?? []).map((x, j) => j === mi ? { ...x, lado: ld } : x))} aria-pressed={m.lado === ld} style={{ padding: "5px 10px", borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: m.lado === ld ? FG : "transparent", color: m.lado === ld ? BG : MUTED, border: `1px solid ${m.lado === ld ? FG : LINE}` }}>{lbl}</button>
+                            ))}
+                          </div>
+                          <input value={m.autor} onChange={(e) => update(sel, "mensagens", (atual.mensagens ?? []).map((x, j) => j === mi ? { ...x, autor: e.target.value } : x))} placeholder="Autor" aria-label={`Autor da mensagem ${mi + 1}`} style={{ ...taStyle, flex: 1, padding: "6px 9px" }} />
+                          <button onClick={() => update(sel, "mensagens", (atual.mensagens ?? []).filter((_, j) => j !== mi))} aria-label={`Remover mensagem ${mi + 1}`} className="ed-btn" style={iconBtn(false)}>✕</button>
                         </div>
-                      ))}
-                    </div>
-                  ))}
+                        <textarea value={m.texto} onChange={(e) => update(sel, "mensagens", (atual.mensagens ?? []).map((x, j) => j === mi ? { ...x, texto: e.target.value } : x))} rows={2} placeholder="Mensagem" aria-label={`Texto da mensagem ${mi + 1}`} style={taStyle} />
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => update(sel, "mensagens", [...(atual.mensagens ?? []), { lado: "esq", autor: "", texto: "" } as ChatMsg])} className="ed-btn" style={{ ...ghostBtn, marginBottom: 16 }}>+ Adicionar mensagem</button>
                 </>
               )}
 
@@ -668,25 +666,6 @@ export default function Gerar() {
       )}
     </div>
     </>
-  );
-}
-
-const DECS: { v: TextDec; label: string; title: string }[] = [
-  { v: "none", label: "○", title: "Sem decoração" },
-  { v: "underline", label: "U̲", title: "Sublinhado" },
-  { v: "line-through", label: "S̶", title: "Riscado" },
-];
-
-function DecRow({ label, value, onChange }: { label: string; value: TextDec; onChange: (v: TextDec) => void }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ fontSize: 11, color: MUTED, width: 44, flexShrink: 0 }}>{label}</span>
-      <div style={{ display: "flex", gap: 4 }}>
-        {DECS.map((d) => (
-          <button key={d.v} onClick={() => onChange(d.v)} title={d.title} style={{ width: 32, height: 26, borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: value === d.v ? FG : "transparent", color: value === d.v ? BG : MUTED, border: `1px solid ${value === d.v ? FG : LINE}` }}>{d.label}</button>
-        ))}
-      </div>
-    </div>
   );
 }
 

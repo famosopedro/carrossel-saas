@@ -418,8 +418,8 @@ export default function Gerar() {
                 {exportando ? `⏳ Exportando ${zipProg ?? ""}…` : "↓ Todos (ZIP)"}
               </button>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, color: OK }}>
-              <span style={{ fontSize: 9 }}>●</span>
+            <div role="status" aria-live="polite" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, color: OK }}>
+              <span style={{ fontSize: 9 }} aria-hidden="true">●</span>
               <span>Salvo automaticamente no dashboard</span>
             </div>
 

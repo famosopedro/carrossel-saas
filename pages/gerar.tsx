@@ -165,7 +165,7 @@ export default function Gerar() {
       if (!res.ok) throw new Error(data.error);
       setSlides((p) => p.map((s, j) => (j === i ? data.slide : s)));
       showUndo("Slide regenerado", () => setSlides((p) => p.map((s, j) => (j === i ? anterior : s))));
-    } catch { setErro("Falha ao regenerar"); }
+    } catch { setErro("Não consegui refazer esse slide. Tente de novo."); }
     finally { setRegenIdx(null); }
   }
 

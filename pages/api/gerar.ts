@@ -78,6 +78,6 @@ Responda SOMENTE com array JSON válido, sem markdown:
     return res.status(200).json({ slides });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: "Falha ao gerar slides" });
+    return res.status(500).json({ error: "Não consegui gerar agora. Tente de novo em alguns segundos." });
   }
 }

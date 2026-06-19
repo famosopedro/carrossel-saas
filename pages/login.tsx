@@ -50,7 +50,7 @@ export default function Login() {
         setOk("Link de redefinição enviado para seu e-mail.");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Erro desconhecido";
+      const msg = err instanceof Error ? err.message : "Algo deu errado. Tente de novo.";
       setErro(translateError(msg));
     } finally {
       setLoading(false);

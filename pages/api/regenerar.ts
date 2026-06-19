@@ -51,6 +51,6 @@ Tom direto, confiante, editorial. Sem emojis. Responda SOMENTE o JSON, sem markd
     return res.status(200).json({ slide });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: "Falha ao regenerar slide" });
+    return res.status(500).json({ error: "Não consegui refazer esse slide. Tente de novo." });
   }
 }

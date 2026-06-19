@@ -28,10 +28,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { base64, mimeType } = req.body as { base64: string; mimeType: string };
   if (!base64 || !mimeType) return res.status(400).json({ ok: false, error: "missing fields" });
   if (!ALLOWED.includes(mimeType)) {
-    return res.status(400).json({ ok: false, error: "Tipo de arquivo não suportado." });
+    return res.status(400).json({ ok: false, error: "Formato não suportado. Use PNG, JPG, WebP ou PDF." });
   }
   if (base64.length > MAX_BASE64) {
-    return res.status(413).json({ ok: false, error: "Arquivo muito grande." });
+    return res.status(413).json({ ok: false, error: "Arquivo muito grande. Máximo 6 MB." });
   }
 
   const isPdf = mimeType === "application/pdf";
@@ -88,6 +88,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   } catch (err) {
     console.error("analisar-marca:", err);
-    res.status(500).json({ ok: false, error: "Falha ao analisar a marca." });
+    res.status(500).json({ ok: false, error: "Não consegui ler essa identidade. Tente outra imagem ou PDF." });
   }
 }

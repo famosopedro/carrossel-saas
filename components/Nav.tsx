@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type React from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useAuth } from "@/lib/auth";
 import { BG, SURFACE, FG, MUTED, LINE, ACCENT } from "@/lib/ui";
 
 type Theme = "dark" | "light" | "auto";
@@ -38,6 +39,14 @@ function IconAuto() {
   );
 }
 
+function IconLogout() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M5.5 2.5H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2.5M10 10.5 12.5 8 10 5.5M12.5 8H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 function themeForHour(): "dark" | "light" {
   const h = new Date().getHours();
   return h >= 7 && h < 19 ? "light" : "dark";
@@ -49,8 +58,14 @@ function applyTheme(t: Theme) {
 }
 
 export default function Nav() {
-  const { pathname, basePath } = useRouter();
+  const { pathname, basePath, push } = useRouter();
+  const { signOut } = useAuth();
   const [theme, setThemeState] = useState<Theme>("dark");
+
+  async function handleSignOut() {
+    await signOut();
+    push("/login");
+  }
 
   useEffect(() => {
     const saved = (localStorage.getItem("famoso_theme") as Theme) || "dark";
@@ -126,28 +141,48 @@ export default function Nav() {
         })}
       </nav>
 
-      {/* Theme toggle */}
-      <div style={{ display: "flex", gap: 2, background: BG, border: `1px solid ${LINE}`, borderRadius: 8, padding: 3 }}>
-        {ICONS.map(({ t, Icon, label }) => {
-          const active = theme === t;
-          return (
-            <button
-              key={t}
-              onClick={() => handleTheme(t)}
-              title={label}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                width: 28, height: 28, borderRadius: 6,
-                border: "none", cursor: "pointer",
-                background: active ? SURFACE : "transparent",
-                color: active ? FG : MUTED,
-                transition: "background 0.15s, color 0.15s",
-              }}
-            >
-              <Icon />
-            </button>
-          );
-        })}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Theme toggle */}
+        <div style={{ display: "flex", gap: 2, background: BG, border: `1px solid ${LINE}`, borderRadius: 8, padding: 3 }}>
+          {ICONS.map(({ t, Icon, label }) => {
+            const active = theme === t;
+            return (
+              <button
+                key={t}
+                onClick={() => handleTheme(t)}
+                title={label}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 28, height: 28, borderRadius: 6,
+                  border: "none", cursor: "pointer",
+                  background: active ? SURFACE : "transparent",
+                  color: active ? FG : MUTED,
+                  transition: "background 0.15s, color 0.15s",
+                }}
+              >
+                <Icon />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sair */}
+        <button
+          onClick={handleSignOut}
+          title="Sair"
+          aria-label="Sair"
+          className="ed-btn"
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            height: 34, padding: "0 12px", borderRadius: 8,
+            background: "transparent", border: `1px solid ${LINE}`,
+            color: MUTED, fontSize: 13, fontWeight: 500, cursor: "pointer",
+            fontFamily: "inherit",
+          }}
+        >
+          <IconLogout />
+          Sair
+        </button>
       </div>
     </header>
   );

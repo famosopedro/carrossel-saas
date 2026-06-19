@@ -3,12 +3,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import { requireAuth, rateLimited } from "@/lib/api-auth";
 
 export const config = {
-  api: { bodyParser: { sizeLimit: "6mb" } },
+  // base64 infla ~33%; 8mb de body comporta arquivo decodificado de ~6MB
+  api: { bodyParser: { sizeLimit: "8mb" } },
 };
 
 const ALLOWED_IMAGE = ["image/png", "image/jpeg", "image/gif", "image/webp"] as const;
 const ALLOWED = [...ALLOWED_IMAGE, "application/pdf"];
-const MAX_BASE64 = 6 * 1024 * 1024;
+const MAX_BYTES = 6 * 1024 * 1024; // tamanho real do arquivo decodificado
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Mesma origem: sem CORS aberto.
@@ -17,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const user = await requireAuth(req, res);
   if (!user) return;
 
-  if (rateLimited(user.id, 10, 60_000)) {
+  if (await rateLimited(user.id, 10, 60_000)) {
     return res.status(429).json({ ok: false, error: "Muitas requisições. Aguarde um minuto." });
   }
 
@@ -30,7 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!ALLOWED.includes(mimeType)) {
     return res.status(400).json({ ok: false, error: "Formato não suportado. Use PNG, JPG, WebP ou PDF." });
   }
-  if (base64.length > MAX_BASE64) {
+  // base64.length * 3/4 ≈ bytes reais do arquivo
+  if (Math.floor(base64.length * 0.75) > MAX_BYTES) {
     return res.status(413).json({ ok: false, error: "Arquivo muito grande. Máximo 6 MB." });
   }
 

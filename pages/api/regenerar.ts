@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const user = await requireAuth(req, res);
   if (!user) return;
 
-  if (rateLimited(user.id, 20, 60_000)) {
+  if (await rateLimited(user.id, 20, 60_000)) {
     return res.status(429).json({ error: "Muitas requisições. Aguarde um minuto." });
   }
 

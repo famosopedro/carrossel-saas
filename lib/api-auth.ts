@@ -24,18 +24,40 @@ export async function requireAuth(req: NextApiRequest, res: NextApiResponse) {
   return user;
 }
 
-/** Rate limiter in-memory (free, sem dependências externas). */
+/**
+ * Rate limiter. Usa Upstash Redis (REST, sem dependência) quando
+ * UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN estão setados —
+ * defesa global real no serverless. Sem env, cai p/ in-memory por instância.
+ */
 interface Window { count: number; resetAt: number }
 const store = new Map<string, Window>();
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, w] of store.entries()) if (w.resetAt < now) store.delete(k);
-}, 5 * 60 * 1000);
 
-export function rateLimited(key: string, max: number, windowMs: number): boolean {
+function memoryLimited(key: string, max: number, windowMs: number): boolean {
   const now = Date.now();
+  if (store.size > 5000) for (const [k, w] of store.entries()) if (w.resetAt < now) store.delete(k);
   const w = store.get(key);
   if (!w || w.resetAt < now) { store.set(key, { count: 1, resetAt: now + windowMs }); return false; }
   w.count += 1;
   return w.count > max;
+}
+
+export async function rateLimited(key: string, max: number, windowMs: number): Promise<boolean> {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) {
+    try {
+      const k = `rl:${key}`;
+      const res = await fetch(`${url}/pipeline`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify([["INCR", k], ["PEXPIRE", k, windowMs, "NX"]]),
+      });
+      const data = await res.json();
+      const count = Array.isArray(data) ? data[0]?.result : undefined;
+      if (typeof count === "number") return count > max;
+    } catch {
+      // rede/Upstash falhou → fallback in-memory
+    }
+  }
+  return memoryLimited(key, max, windowMs);
 }

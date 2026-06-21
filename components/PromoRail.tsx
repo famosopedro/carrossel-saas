@@ -79,6 +79,8 @@ export default function PromoRail() {
   return (
     <aside
       className="promo-rail"
+      role="complementary"
+      aria-label="Ofertas FAMOSO"
       style={{ width: 320, flexShrink: 0, borderLeft: `1px solid ${LINE}`, background: SURFACE, height: "100%", padding: "24px 20px", boxSizing: "border-box", display: "flex", flexDirection: "column" }}
       onMouseEnter={() => { pausado.current = true; }}
       onMouseLeave={() => { pausado.current = false; }}

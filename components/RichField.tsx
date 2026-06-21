@@ -38,19 +38,54 @@ type Props = {
 export default function RichField({ id, label, value, onChange, rows = 2, hint, align, onAlign, cor, onCor }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
+  function setRange(a: number, b: number) {
+    const ta = ref.current;
+    requestAnimationFrame(() => { ta?.focus(); ta?.setSelectionRange(a, b); });
+  }
+
+  // `*` (itálico) é prefixo de `**` (negrito). Evita confundir um pelo outro
+  // ao detectar marcadores: itálico só conta se NÃO houver um segundo asterisco.
+  function italicSafe(pre: string, inner: string) {
+    if (pre !== "*") return true;
+    return !inner.startsWith("*") && !inner.endsWith("*");
+  }
+
+  // Aplica/remove marcador (toggle). Sem seleção: insere o par vazio e põe o
+  // cursor no meio para digitar. Nunca empilha marcadores nem injeta placeholder.
   function wrap(pre: string, post: string) {
     const ta = ref.current;
     if (!ta) return;
     const s = ta.selectionStart ?? value.length;
     const e = ta.selectionEnd ?? value.length;
-    const sel = value.slice(s, e) || "texto";
-    const next = value.slice(0, s) + pre + sel + post + value.slice(e);
-    onChange(next);
-    // recoloca o cursor envolvendo o texto inserido
-    requestAnimationFrame(() => {
-      ta.focus();
-      ta.setSelectionRange(s + pre.length, s + pre.length + sel.length);
-    });
+    const sel = value.slice(s, e);
+
+    // 1) Seleção já é exatamente "pre…post" → desmarca (remove de dentro)
+    if (sel.length >= pre.length + post.length && sel.startsWith(pre) && sel.endsWith(post) && italicSafe(pre, sel.slice(pre.length, sel.length - post.length))) {
+      const inner = sel.slice(pre.length, sel.length - post.length);
+      onChange(value.slice(0, s) + inner + value.slice(e));
+      setRange(s, s + inner.length);
+      return;
+    }
+
+    // 2) Marcadores logo em volta da seleção → desmarca (remove os de fora)
+    const antes = value.slice(Math.max(0, s - pre.length), s);
+    const depois = value.slice(e, e + post.length);
+    if (antes === pre && depois === post && italicSafe(pre, sel)) {
+      onChange(value.slice(0, s - pre.length) + sel + value.slice(e + post.length));
+      setRange(s - pre.length, e - pre.length);
+      return;
+    }
+
+    // 3) Sem seleção → insere par vazio, cursor no meio
+    if (s === e) {
+      onChange(value.slice(0, s) + pre + post + value.slice(e));
+      setRange(s + pre.length, s + pre.length);
+      return;
+    }
+
+    // 4) Envolve a seleção
+    onChange(value.slice(0, s) + pre + sel + post + value.slice(e));
+    setRange(s + pre.length, s + pre.length + sel.length);
   }
 
   const tbBtn: React.CSSProperties = { minWidth: 28, height: 28, borderRadius: 5, background: "transparent", color: FG, border: `1px solid ${LINE}`, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" };

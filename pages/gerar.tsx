@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
-import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, DEFAULT_BRAND, FONTES, FONTES_SERIF, PESOS, novoSlide, deriveVariante, migrarSlide, VARIANTES, type BrandConfig, type Slide, type SlideVariante, type ListaItem, type ChatMsg, type TextAlign, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
+import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, getPilotoConfig, saveAgendamento, novoId, DEFAULT_BRAND, FONTES, FONTES_SERIF, PESOS, novoSlide, deriveVariante, migrarSlide, VARIANTES, type BrandConfig, type Slide, type SlideVariante, type ListaItem, type ChatMsg, type TextAlign, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
 import SlideRender, { DIM } from "@/components/SlideRender";
 import RichField from "@/components/RichField";
 import IconPicker from "@/components/IconPicker";
 import PromoRail from "@/components/PromoRail";
+import { useToast } from "@/components/Toast";
 import { exportSlidePng, exportAllZip } from "@/lib/export";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { BG, SURFACE, FG, MUTED, FAINT, LINE, LINE2, CARD, OK, ACCENT, SERIF, eyebrow } from "@/lib/ui";
@@ -40,9 +41,11 @@ export default function Gerar() {
   const [regenIdx, setRegenIdx] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
+  const [baixandoPng, setBaixandoPng] = useState(false);
   const [zipProg, setZipProg] = useState<string | null>(null);
   const [marcaOpen, setMarcaOpen] = useState(false);
   const [undo, setUndo] = useState<{ msg: string; restore: () => void } | null>(null);
+  const { toast, ToastHost } = useToast();
   const logoFileRef = useRef<HTMLInputElement>(null);
   const assetFileRef = useRef<HTMLInputElement>(null);
   const criadoEmRef = useRef<number>(0); // setado ao gerar ou carregar
@@ -102,8 +105,12 @@ export default function Gerar() {
       setCarrosselId(c.id);
       criadoEmRef.current = c.criadoEm;
       setSel(0);
+    } else if (qid) {
+      // veio um ?id= explícito que não existe (link antigo / carrossel apagado)
+      toast("Carrossel não encontrado. Comece um novo.", "erro");
+      router.replace("/gerar?new=1");
     }
-  }, [router.isReady, router.query.id, router.query.new]);
+  }, [router.isReady, router.query.id, router.query.new]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save: persiste no dashboard a cada mudança (debounce 600ms).
   // carrosselId já está sempre setado quando há slides (em handleGerar e no load).
@@ -220,8 +227,12 @@ export default function Gerar() {
   }
 
   async function baixarUm() {
+    if (baixandoPng) return;
     const node = exportRefs.current[sel];
-    if (node) await exportSlidePng(node, `slide-${sel + 1}`);
+    if (!node) return;
+    setBaixandoPng(true);
+    try { await exportSlidePng(node, `slide-${sel + 1}`); }
+    finally { setBaixandoPng(false); }
   }
   async function baixarTodos() {
     setExportando(true); setZipProg("0/" + slides.length);
@@ -229,6 +240,25 @@ export default function Gerar() {
       const nodes = exportRefs.current.filter(Boolean) as HTMLDivElement[];
       await exportAllZip(nodes, (tema || "carrossel").slice(0, 30).replace(/\s+/g, "-"), (feito, total) => setZipProg(`${feito}/${total}`));
     } finally { setExportando(false); setZipProg(null); }
+  }
+
+  // Agenda este carrossel no Piloto: próximo dia configurado (ou amanhã)
+  function agendar() {
+    if (!carrosselId) return;
+    const cfg = getPilotoConfig();
+    const base = new Date(); base.setHours(0, 0, 0, 0);
+    let alvo = new Date(base); alvo.setDate(base.getDate() + 1);
+    if (cfg.dias.length) {
+      for (let d = 1; d <= 7; d++) {
+        const cand = new Date(base); cand.setDate(base.getDate() + d);
+        if (cfg.dias.includes(cand.getDay())) { alvo = cand; break; }
+      }
+    }
+    saveAgendamento({
+      id: novoId(), carrosselId, tema: tema || "Carrossel",
+      data: alvo.getTime(), hora: cfg.horario, status: "agendado", criadoEm: Date.now(),
+    });
+    toast(`Agendado para ${alvo.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })} às ${cfg.horario}`);
   }
 
   const temSlides = slides.length > 0;
@@ -240,7 +270,7 @@ export default function Gerar() {
   return (
     <>
     <Head><title>{tema ? `${tema} — Carrossel | FAMOSO®` : "Gerar carrossel | FAMOSO®"}</title></Head>
-    <div style={{ background: BG, color: FG, display: "flex", ...(isMobile ? { flexDirection: "column", height: "auto", minHeight: "calc(100vh - 56px)" } : { height: "calc(100vh - 56px)", overflow: "hidden" }) }}>
+    <div style={{ background: BG, color: FG, display: "flex", ...(isMobile ? { flexDirection: "column", height: "auto", minHeight: "calc(100vh - 54px)" } : { height: "100%", overflow: "hidden" }) }}>
 
       {/* SIDEBAR */}
       <aside className="sidebar-scroll" style={{ background: SURFACE, padding: "26px 22px", display: "flex", flexDirection: "column", gap: 20, flexShrink: 0, transition: "width 0.2s", ...(isMobile ? { width: "100%", boxSizing: "border-box", borderBottom: `1px solid ${LINE}`, height: "auto", overflowY: "visible" } : { width: marcaOpen ? 300 : 270, borderRight: `1px solid ${LINE}`, height: "100%", overflowY: "auto" }) }}>
@@ -373,7 +403,7 @@ export default function Gerar() {
                       <button title="Remover asset" aria-label="Remover asset" onClick={() => { const next = (marca.assets||[]).filter((_,j)=>j!==i); setMarca(p=>{const n={...p,assets:next};saveMarca(n);return n;}); }} style={{ position: "absolute", top: 2, right: 2, width: 14, height: 14, borderRadius: "50%", background: "rgba(0,0,0,0.8)", border: "none", color: FG, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                     </div>
                   ))}
-                  <button onClick={() => assetFileRef.current?.click()} style={{ aspectRatio: "1", borderRadius: 5, fontSize: 16, cursor: "pointer", background: "transparent", color: MUTED, border: `1px dashed ${LINE}` }}>+</button>
+                  <button onClick={() => assetFileRef.current?.click()} aria-label="Adicionar asset" title="Adicionar asset (PNG/SVG)" style={{ aspectRatio: "1", borderRadius: 5, fontSize: 16, cursor: "pointer", background: "transparent", color: MUTED, border: `1px dashed ${LINE}` }}>+</button>
                 </div>
                 <input ref={assetFileRef} type="file" accept="image/png,image/svg+xml" multiple style={{ display: "none" }} onChange={(e) => {
                   Array.from(e.target.files||[]).forEach(file => {
@@ -396,11 +426,11 @@ export default function Gerar() {
         </div>
 
         <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px" }}>
-          <label id="slides-label" style={lblStyle}>Slides</label>
+          <label id="slides-label" style={lblStyle}>Slides <span style={{ textTransform: "none", color: FAINT, fontWeight: 400 }}>· máx. 20</span></label>
           <div role="group" aria-labelledby="slides-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button onClick={() => setQuantidade((q) => Math.max(1, q - 1))} aria-label="Diminuir número de slides" style={{ width: 44, height: 44, borderRadius: 5, border: `1px solid ${LINE}`, background: "transparent", color: FG, fontSize: 18, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-            <span role="spinbutton" aria-valuenow={quantidade} aria-valuemin={1} aria-valuemax={30} aria-live="polite" style={{ flex: 1, textAlign: "center" as const, fontSize: 15, fontWeight: 700, color: FG }}>{quantidade}</span>
-            <button onClick={() => setQuantidade((q) => Math.min(30, q + 1))} aria-label="Aumentar número de slides" style={{ width: 44, height: 44, borderRadius: 5, border: `1px solid ${LINE}`, background: "transparent", color: FG, fontSize: 18, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+            <span role="spinbutton" aria-valuenow={quantidade} aria-valuemin={1} aria-valuemax={20} aria-live="polite" style={{ flex: 1, textAlign: "center" as const, fontSize: 15, fontWeight: 700, color: FG }}>{quantidade}</span>
+            <button onClick={() => setQuantidade((q) => Math.min(20, q + 1))} aria-label="Aumentar número de slides" style={{ width: 44, height: 44, borderRadius: 5, border: `1px solid ${LINE}`, background: "transparent", color: FG, fontSize: 18, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
           </div>
         </div>
 
@@ -413,10 +443,14 @@ export default function Gerar() {
           <>
             <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
               <p className="ed-eyebrow">Exportar</p>
-              <button onClick={baixarUm} className="ed-btn" style={ghostBtn}>↓ Slide atual (PNG)</button>
+              <button onClick={baixarUm} disabled={baixandoPng} className="ed-btn" style={ghostBtn}>{baixandoPng ? "⏳ Exportando…" : "↓ Slide atual (PNG)"}</button>
               <button onClick={baixarTodos} disabled={exportando} className="ed-btn" style={ghostBtn}>
                 {exportando ? `⏳ Exportando ${zipProg ?? ""}…` : "↓ Todos (ZIP)"}
               </button>
+            </div>
+            <div style={{ borderRadius: 10, border: `1px solid ${LINE}`, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+              <p className="ed-eyebrow">Piloto Automático</p>
+              <button onClick={agendar} className="ed-btn" style={ghostBtn}>📅 Agendar no piloto</button>
             </div>
             <div role="status" aria-live="polite" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, color: OK }}>
               <span style={{ fontSize: 9 }} aria-hidden="true">●</span>
@@ -509,7 +543,7 @@ export default function Gerar() {
                     </button>
                   );
                 })}
-                <button onClick={addSlide} title="Adicionar slide" className="ed-btn" style={{ width: 62, height: 62 * (DIM[marca.formato].h / DIM[marca.formato].w), border: `1px dashed ${LINE2}`, borderRadius: 8, background: "none", color: MUTED, fontSize: 22, cursor: "pointer" }}>+</button>
+                <button onClick={addSlide} aria-label="Adicionar slide" title="Adicionar slide" className="ed-btn" style={{ width: 62, height: 62 * (DIM[marca.formato].h / DIM[marca.formato].w), border: `1px dashed ${LINE2}`, borderRadius: 8, background: "none", color: MUTED, fontSize: 22, cursor: "pointer" }}>+</button>
               </div>
             </div>
 
@@ -664,6 +698,7 @@ export default function Gerar() {
           <span key={undo.msg} className="undo-bar" aria-hidden="true" />
         </div>
       )}
+      {ToastHost}
     </div>
     </>
   );

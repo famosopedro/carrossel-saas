@@ -109,18 +109,18 @@ function SliderField({ label, value, min, max, step, fmt, onChange }: {
 }
 
 // Input numérico estilo design software (↑↓ + digitação)
-function NumInput({ label, value, min, max, step, unit, onChange }: {
-  label: string; value: number; min: number; max: number; step: number;
+function NumInput({ label, ariaLabel, value, min, max, step, unit, onChange }: {
+  label: string; ariaLabel?: string; value: number; min: number; max: number; step: number;
   unit?: string; onChange: (v: number) => void;
 }) {
   const clamp = (v: number) => Math.min(max, Math.max(min, v));
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <span style={{ fontSize: 11, color: MUTED, width: 44, flexShrink: 0 }}>{label}</span>
+      {label && <span style={{ fontSize: 11, color: MUTED, width: 44, flexShrink: 0 }}>{label}</span>}
       <div style={{ display: "flex", alignItems: "center", background: CARD, border: `1px solid ${LINE}`, borderRadius: 6, overflow: "hidden", height: 32 }}>
         <input
           type="number" value={value} min={min} max={max} step={step}
-          aria-label={label}
+          aria-label={ariaLabel || label}
           onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onChange(clamp(v)); }}
           onKeyDown={(e) => {
             if (e.key === "ArrowUp") { e.preventDefault(); onChange(clamp(parseFloat((value + step).toFixed(10))));  }
@@ -188,6 +188,15 @@ export default function MarcaPage() {
       setCustomFontesSerif((m.customFonts || []).filter(f => f.style === "italic").map(f => f.name));
     }
   }, []);
+
+  // Vindo de /config "Novo perfil de marca" → abre o formulário de criação
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.novo) {
+      setCriandoNovo(true);
+      router.replace("/marca", undefined, { shallow: true });
+    }
+  }, [router.isReady, router.query.novo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function carregarPerfil(id: string) {
     const ps = getPerfis();
@@ -264,7 +273,6 @@ export default function MarcaPage() {
     setPerfilAtivoIdState(id);
     setMarca(configInicial);
     setSaved(false);
-    console.log("[marca] perfil criado, id=", id, "perfilAtivoId setado");
 
     // 2. Análise roda em background e atualiza os campos quando terminar
     if (novoArquivos.length === 0) return;
@@ -312,7 +320,6 @@ export default function MarcaPage() {
 
     // Atualiza o form independente de storage
     const configFinal: BrandConfig = { ...configInicial, ...extraConfig };
-    console.log("[marca] aplicando configFinal:", JSON.stringify(configFinal));
     flushSync(() => {
       setMarca(configFinal);
       setPerfilAtivoIdState(id);
@@ -410,7 +417,7 @@ export default function MarcaPage() {
   return (
     <>
     <Head><title>Identidade Visual | FAMOSO®</title></Head>
-    <div style={{ background: BG, color: FG, display: "flex", ...(isMobile ? { flexDirection: "column", height: "auto", minHeight: "calc(100vh - 56px)" } : { height: "calc(100vh - 56px)", overflow: "hidden" }) }}>
+    <div style={{ background: BG, color: FG, display: "flex", ...(isMobile ? { flexDirection: "column", height: "auto", minHeight: "calc(100vh - 54px)" } : { height: "100%", overflow: "hidden" }) }}>
       <div style={{ flex: 1, minWidth: 0, ...(isMobile ? { overflowY: "visible" } : { overflowY: "auto" }) }}>
         <div style={{ maxWidth: 860, margin: "0 auto", padding: "40px 28px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: isMobile ? 32 : 48, alignItems: "start" }}>
 
@@ -776,36 +783,36 @@ export default function MarcaPage() {
               ))}
               {/* Título */}
               <span style={{ fontSize: 11, color: MUTED }}>Título</span>
-              <NumInput label="" value={marca.tituloTamanho} min={48} max={160} step={2} unit="px" onChange={(v) => set("tituloTamanho", v)} />
+              <NumInput label="" ariaLabel="Tamanho do título" value={marca.tituloTamanho} min={48} max={160} step={2} unit="px" onChange={(v) => set("tituloTamanho", v)} />
               <input type="range" min={400} max={900} step={100} value={marca.tituloPeso}
                 onChange={(e) => set("tituloPeso", +e.target.value)}
-                title={String(marca.tituloPeso)}
+                aria-label="Peso do título" title={String(marca.tituloPeso)}
                 style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
               <input type="range" min={0.8} max={1.6} step={0.01} value={marca.tituloEntreLinhas}
                 onChange={(e) => set("tituloEntreLinhas", +e.target.value)}
-                title={marca.tituloEntreLinhas.toFixed(2)}
+                aria-label="Entrelinhas do título" title={marca.tituloEntreLinhas.toFixed(2)}
                 style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
               {/* Corpo */}
               <span style={{ fontSize: 11, color: MUTED }}>Corpo</span>
-              <NumInput label="" value={marca.corpoTamanho} min={24} max={80} step={2} unit="px" onChange={(v) => set("corpoTamanho", v)} />
+              <NumInput label="" ariaLabel="Tamanho do corpo" value={marca.corpoTamanho} min={24} max={80} step={2} unit="px" onChange={(v) => set("corpoTamanho", v)} />
               <input type="range" min={400} max={900} step={100} value={marca.corpoPeso}
                 onChange={(e) => set("corpoPeso", +e.target.value)}
-                title={String(marca.corpoPeso)}
+                aria-label="Peso do corpo" title={String(marca.corpoPeso)}
                 style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
               <input type="range" min={1.0} max={2.0} step={0.05} value={marca.corpoEntreLinhas}
                 onChange={(e) => set("corpoEntreLinhas", +e.target.value)}
-                title={marca.corpoEntreLinhas.toFixed(2)}
+                aria-label="Entrelinhas do corpo" title={marca.corpoEntreLinhas.toFixed(2)}
                 style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
               {/* Serif */}
               <span style={{ fontSize: 11, color: MUTED }}>Serif</span>
-              <NumInput label="" value={marca.serifTamanho} min={24} max={80} step={2} unit="px" onChange={(v) => set("serifTamanho", v)} />
+              <NumInput label="" ariaLabel="Tamanho do serif" value={marca.serifTamanho} min={24} max={80} step={2} unit="px" onChange={(v) => set("serifTamanho", v)} />
               <input type="range" min={400} max={900} step={100} value={marca.serifPeso}
                 onChange={(e) => set("serifPeso", +e.target.value)}
-                title={String(marca.serifPeso)}
+                aria-label="Peso do serif" title={String(marca.serifPeso)}
                 style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
               <input type="range" min={0.9} max={2.0} step={0.05} value={marca.serifEntreLinhas}
                 onChange={(e) => set("serifEntreLinhas", +e.target.value)}
-                title={marca.serifEntreLinhas.toFixed(2)}
+                aria-label="Entrelinhas do serif" title={marca.serifEntreLinhas.toFixed(2)}
                 style={{ accentColor: FG, cursor: "pointer", width: "100%" }} />
             </div>
             {/* valores legíveis abaixo dos sliders */}

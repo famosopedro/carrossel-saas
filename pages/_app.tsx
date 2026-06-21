@@ -2,7 +2,7 @@ import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import Nav from "@/components/Nav";
+import AppLayout from "@/components/AppLayout";
 import { getMarca } from "@/lib/storage";
 import { registrarFontesCustom } from "@/lib/fonts";
 import { AuthProvider } from "@/lib/auth";
@@ -18,13 +18,18 @@ function AppInner({ Component, pageProps }: AppProps) {
 
   return (
     <ProtectedRoute>
-      {showNav && (
-        <a href="#conteudo" className="skip-link">Pular para o conteúdo</a>
+      {showNav ? (
+        <>
+          <a href="#conteudo" className="skip-link">Pular para o conteúdo</a>
+          <AppLayout>
+            <Component {...pageProps} />
+          </AppLayout>
+        </>
+      ) : (
+        <div id="conteudo">
+          <Component {...pageProps} />
+        </div>
       )}
-      {showNav && <Nav />}
-      <div id="conteudo">
-        <Component {...pageProps} />
-      </div>
     </ProtectedRoute>
   );
 }

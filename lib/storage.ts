@@ -357,3 +357,86 @@ export function getUltimoId(): string | null {
 export function setUltimoId(id: string): void {
   try { localStorage.setItem("famoso_ultimo_id", id); pushSoon(); } catch {}
 }
+
+// ── Piloto Automático: agendamentos + config ──────────────────────────────
+// Escopo atual: dados locais (sincronizados via workspaces). A publicação real
+// no Instagram (Graph API) é fase 2 — por ora os status são geridos no app.
+
+export type AgendamentoStatus = "rascunho" | "agendado" | "publicado" | "erro";
+
+export type Agendamento = {
+  id: string;
+  carrosselId: string | null; // carrossel vinculado (ou null se só pauta)
+  tema: string;
+  data: number;   // dia do post (timestamp, meia-noite local)
+  hora: string;   // "HH:MM"
+  status: AgendamentoStatus;
+  criadoEm: number;
+};
+
+export type PilotoConfig = {
+  ativo: boolean;
+  dias: number[];     // 0=dom … 6=sáb
+  horario: string;    // "HH:MM"
+  pautas: string[];   // temas que alimentam a geração automática
+  frequencia: number; // posts por semana (derivado de dias, editável)
+};
+
+export const PILOTO_DEFAULT: PilotoConfig = {
+  ativo: false,
+  dias: [1, 3, 5], // seg, qua, sex
+  horario: "09:00",
+  pautas: [],
+  frequencia: 3,
+};
+
+export function getPilotoConfig(): PilotoConfig {
+  if (typeof window === "undefined") return PILOTO_DEFAULT;
+  try {
+    const raw = localStorage.getItem("famoso_piloto");
+    return raw ? { ...PILOTO_DEFAULT, ...JSON.parse(raw) } : PILOTO_DEFAULT;
+  } catch {
+    return PILOTO_DEFAULT;
+  }
+}
+
+export function savePilotoConfig(cfg: PilotoConfig): void {
+  try { localStorage.setItem("famoso_piloto", JSON.stringify(cfg)); pushSoon(); } catch {}
+}
+
+export function getAgendamentos(): Agendamento[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("famoso_agendamentos");
+    const list: Agendamento[] = raw ? JSON.parse(raw) : [];
+    return list.sort((a, b) => a.data - b.data);
+  } catch {
+    return [];
+  }
+}
+
+export function saveAgendamento(a: Agendamento): boolean {
+  const list = getAgendamentos();
+  const idx = list.findIndex((x) => x.id === a.id);
+  if (idx >= 0) list[idx] = a;
+  else list.push(a);
+  try {
+    localStorage.setItem("famoso_agendamentos", JSON.stringify(list));
+    pushSoon();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function deleteAgendamento(id: string): void {
+  const list = getAgendamentos().filter((a) => a.id !== id);
+  localStorage.setItem("famoso_agendamentos", JSON.stringify(list));
+  pushSoon();
+}
+
+// id curto e estável p/ agendamentos (evita dep externa)
+export function novoId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}

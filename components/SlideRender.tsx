@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import type { BrandConfig, Slide, Tema, SlideVariante, TextAlign } from "@/lib/storage";
+import type { BrandConfig, Slide, Tema, SlideVariante, TextAlign, NumeracaoPosicao } from "@/lib/storage";
 import { deriveVariante } from "@/lib/storage";
 import { getIcone } from "@/lib/icons";
 
@@ -78,12 +78,20 @@ function Traco({ accent }: { accent: string }) {
   return <div style={{ width: 72, height: 6, borderRadius: 3, background: accent, marginBottom: 40 }} />;
 }
 
-// Numeração de página (círculo/seta) — canto superior direito, fora do rodapé.
+const POS_MAP: Record<NumeracaoPosicao, React.CSSProperties> = {
+  "bottom-right": { right: PAD, bottom: 80 },
+  "bottom-left":  { left: PAD,  bottom: 80 },
+  "top-right":    { right: PAD, top: PAD },
+  "top-left":     { left: PAD,  top: PAD },
+};
+
+// Numeração de página — posição configurável via marca.numeracaoPosicao.
 function Numeracao({ marca, cor, index }: { marca: BrandConfig; cor: string; index: number }) {
   const estilo = marca.numeracaoEstilo ?? "numero";
+  const posicao = marca.numeracaoPosicao ?? "top-right";
   if (estilo === "nenhum") return null;
   return (
-    <div style={{ position: "absolute", top: PAD, right: PAD, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ position: "absolute", ...POS_MAP[posicao], display: "flex", alignItems: "center", justifyContent: "center" }}>
       {estilo === "seta" ? (
         <span style={{ fontSize: 52, color: cor, lineHeight: 1, opacity: 0.85 }}>→</span>
       ) : (
@@ -95,15 +103,15 @@ function Numeracao({ marca, cor, index }: { marca: BrandConfig; cor: string; ind
   );
 }
 
-// Rodapé comum: divisor fino + @handle (esq) + nome da marca (dir).
-function Rodape({ marca, cor, fontSans }: { marca: BrandConfig; cor: string; fontSans: string }) {
+// Rodapé comum: divisor fino + rodapeTexto italic serif (esq) + nome da marca sans (dir).
+function Rodape({ marca, cor, fontSans, fontSerif }: { marca: BrandConfig; cor: string; fontSans: string; fontSerif: string }) {
   const handle = marca.rodapeTexto || marca.url || "";
   return (
     <div style={{ position: "absolute", left: PAD, right: PAD, bottom: 72 }}>
       <div style={{ height: 1, background: cor, opacity: 0.25, marginBottom: 22 }} />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: fontSans }}>
-        <span style={{ fontSize: 30, color: cor, opacity: 0.9 }}>{handle}</span>
-        <span style={{ fontSize: 30, fontWeight: 700, color: cor, letterSpacing: "-0.01em" }}>{marca.nomeMarca}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 30, fontFamily: fontSerif, fontStyle: "italic", color: cor, opacity: 0.85 }}>{handle}</span>
+        <span style={{ fontSize: 30, fontWeight: 700, fontFamily: fontSans, color: cor, letterSpacing: "-0.01em" }}>{marca.nomeMarca}</span>
       </div>
     </div>
   );
@@ -129,8 +137,16 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
   const fontSerif = `'${marca.fonteSerif}', serif`;
   const variante: SlideVariante = deriveVariante(slide);
 
+  // textoClaro: override explícito de cor de texto por slide (preservado do sistema antigo)
+  const corTextoOverride = slide.textoClaro != null
+    ? (slide.textoClaro ? TEMAS.dark.fg : TEMAS.light.fg)
+    : null;
+  const corSubOverride = slide.textoClaro != null
+    ? (slide.textoClaro ? TEMAS.dark.sub : TEMAS.light.sub)
+    : null;
+
   const tituloStyle = (cor: string): React.CSSProperties => ({
-    color: slide.tituloCor || cor,
+    color: slide.tituloCor || corTextoOverride || cor,
     fontSize: marca.tituloTamanho,
     fontWeight: marca.tituloPeso,
     lineHeight: marca.tituloEntreLinhas,
@@ -140,7 +156,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
     textDecoration: slide.tituloDecoracao !== "none" ? slide.tituloDecoracao : undefined,
   });
   const corpoStyle = (cor: string): React.CSSProperties => ({
-    color: slide.corpoCor || cor,
+    color: slide.corpoCor || corSubOverride || cor,
     fontSize: marca.corpoTamanho,
     lineHeight: marca.corpoEntreLinhas,
     fontWeight: marca.corpoPeso,
@@ -153,9 +169,53 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
   const shell = (children: React.ReactNode, bg?: string): React.ReactElement => (
     <div ref={ref} style={{ width: dim.w, height: dim.h, background: bg ?? (tema.bgGrad || tema.bg), position: "relative", overflow: "hidden", fontFamily: fontSans, boxSizing: "border-box" }}>
       <div style={{ backgroundImage: GRAIN, backgroundSize: "200px 200px", position: "absolute", inset: 0, opacity: tema === TEMAS.light ? 0.04 : 0.06, mixBlendMode: "overlay", pointerEvents: "none" }} />
+      {/* Elementos flutuantes (imagens livres posicionadas pelo usuário) */}
+      {(slide.elementos ?? []).map((el, i) => (
+        <img key={i} src={el.src} alt="" style={{ position: "absolute", left: `${el.x}%`, top: `${el.y}%`, width: el.tamanho, transform: `translate(-50%, -50%) rotate(${el.rotacao}deg)`, objectFit: "contain", pointerEvents: "none" }} />
+      ))}
       {children}
     </div>
   );
+
+  // ── 0. SPLIT (layout legado — dark topo / light base) ───────────────
+  if (slide.layout === "split") {
+    const ratio = slide.splitRatio ?? 0.58;
+    const topH = Math.round(dim.h * ratio);
+    const botH = dim.h - topH;
+    const temaTop = TEMAS.dark;
+    const temaBot = TEMAS.light;
+    const corTop = corTextoOverride ?? temaTop.fg;
+    const corBot = corTextoOverride ?? temaBot.fg;
+    const corSubBot = corSubOverride ?? temaBot.sub;
+    return (
+      <div ref={ref} style={{ width: dim.w, height: dim.h, position: "relative", overflow: "hidden", fontFamily: fontSans, boxSizing: "border-box" }}>
+        {(slide.elementos ?? []).map((el, i) => (
+          <img key={i} src={el.src} alt="" style={{ position: "absolute", left: `${el.x}%`, top: `${el.y}%`, width: el.tamanho, transform: `translate(-50%, -50%) rotate(${el.rotacao}deg)`, objectFit: "contain", pointerEvents: "none" }} />
+        ))}
+        {/* topo dark */}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: topH, background: temaTop.bgGrad || temaTop.bg, overflow: "hidden" }}>
+          <div style={{ backgroundImage: GRAIN, backgroundSize: "200px 200px", position: "absolute", inset: 0, opacity: 0.06, mixBlendMode: "overlay", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", left: PAD, right: PAD, top: 100, bottom: 20, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <h1 style={tituloStyle(corTop)}><RichText text={slide.titulo} accent={temaTop.accent} /></h1>
+            {slide.corpo && <p style={corpoStyle(corTop)}><RichText text={slide.corpo} accent={temaTop.accent} /></p>}
+          </div>
+        </div>
+        {/* base light */}
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: botH, background: temaBot.bgGrad || temaBot.bg, overflow: "hidden" }}>
+          <div style={{ backgroundImage: GRAIN, backgroundSize: "200px 200px", position: "absolute", inset: 0, opacity: 0.04, mixBlendMode: "overlay", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", left: PAD, right: PAD, top: 60, display: "flex", flexDirection: "column" }}>
+            {slide.subtitulo && (
+              <p style={{ color: slide.subtituloCor || corSubBot, fontFamily: fontSerif, fontStyle: "italic", fontSize: marca.serifTamanho, lineHeight: marca.serifEntreLinhas, letterSpacing: `${marca.serifEntreLetras}em`, fontWeight: marca.serifPeso, margin: 0, textDecoration: slide.serifDecoracao !== "none" ? slide.serifDecoracao : undefined }}>
+                <RichText text={slide.subtitulo} accent={temaBot.accent} />
+              </p>
+            )}
+          </div>
+          <Rodape marca={marca} cor={corBot} fontSans={fontSans} fontSerif={fontSerif} />
+        </div>
+        <Numeracao marca={marca} cor={corTop} index={index} />
+      </div>
+    );
+  }
 
   // ── 1. CAPA COM IMAGEM ──────────────────────────────────────────────
   if (variante === "capa-imagem") {
@@ -173,7 +233,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
           <h1 style={tituloStyle("#ffffff")}><RichText text={slide.titulo} accent={tema.accent} /></h1>
           {slide.corpo && <p style={corpoStyle("rgba(255,255,255,0.9)")}><RichText text={slide.corpo} accent={tema.accent} /></p>}
         </div>
-        <Rodape marca={marca} cor="#ffffff" fontSans={fontSans} />
+        <Rodape marca={marca} cor="#ffffff" fontSans={fontSans} fontSerif={fontSerif} />
       </>,
     );
   }
@@ -193,7 +253,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
             </p>
           )}
         </div>
-        <Rodape marca={marca} cor={tema.fg} fontSans={fontSans} />
+        <Rodape marca={marca} cor={tema.fg} fontSans={fontSans} fontSerif={fontSerif} />
       </>,
     );
   }
@@ -228,7 +288,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
             })}
           </div>
         </div>
-        <Rodape marca={marca} cor={tema.fg} fontSans={fontSans} />
+        <Rodape marca={marca} cor={tema.fg} fontSans={fontSans} fontSerif={fontSerif} />
       </>,
     );
   }
@@ -249,7 +309,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
           <h1 style={tituloStyle(tema.fg)}><RichText text={slide.titulo} accent={tema.accent} /></h1>
           {slide.corpo && <p style={corpoStyle(tema.sub)}><RichText text={slide.corpo} accent={tema.accent} /></p>}
         </div>
-        <Rodape marca={marca} cor={tema.fg} fontSans={fontSans} />
+        <Rodape marca={marca} cor={tema.fg} fontSans={fontSans} fontSerif={fontSerif} />
       </>,
     );
   }
@@ -277,7 +337,7 @@ const SlideRender = forwardRef<HTMLDivElement, Props>(function SlideRender(
             })}
           </div>
         </div>
-        <Rodape marca={marca} cor={tema.fg} fontSans={fontSans} />
+        <Rodape marca={marca} cor={tema.fg} fontSans={fontSans} fontSerif={fontSerif} />
       </>,
     );
   }

@@ -10,7 +10,7 @@ let _userId: string | null = null;
 let _timer: ReturnType<typeof setTimeout> | null = null;
 let _ready = false; // só true após hydrate bem-sucedido (evita push antes da carga)
 
-const KEYS = ["famoso_perfis", "famoso_perfil_ativo", "famoso_carrosseis", "famoso_ultimo_id", "famoso_marca"];
+const KEYS = ["famoso_perfis", "famoso_perfil_ativo", "famoso_carrosseis", "famoso_ultimo_id", "famoso_marca", "famoso_agendamentos", "famoso_piloto"];
 
 function snapshot(): Record<string, string> {
   const data: Record<string, string> = {};
@@ -62,6 +62,18 @@ async function push(force = false) {
     await supabase.from("workspaces").upsert({ user_id: _userId, data: snapshot() });
   } catch {
     /* silencioso: o localStorage já tem o dado; tenta de novo na próxima gravação */
+  }
+}
+
+// Apaga o workspace remoto (usado em "Limpar dados"). Sem isso, o hydrate()
+// no próximo login repopularia o localStorage a partir da nuvem.
+export async function wipeRemote(): Promise<void> {
+  if (_timer) { clearTimeout(_timer); _timer = null; } // cancela push pendente
+  if (!_userId) return;
+  try {
+    await supabase.from("workspaces").upsert({ user_id: _userId, data: {} });
+  } catch {
+    /* sem rede/tabela: o local já foi limpo; segue */
   }
 }
 

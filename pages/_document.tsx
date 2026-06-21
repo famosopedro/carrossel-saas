@@ -4,6 +4,12 @@ export default function Document() {
   return (
     <Html lang="pt-BR">
       <Head>
+        <meta charSet="utf-8" />
+        <meta name="description" content="Máquina de Carrosséis FAMOSO® — gere carrosséis de Instagram com IA no DNA da sua marca." />
+        <meta name="theme-color" content="#1c1c1c" />
+        <meta property="og:title" content="Máquina de Carrosséis | FAMOSO®" />
+        <meta property="og:description" content="Gere carrosséis de Instagram com IA no DNA da sua marca." />
+        <meta property="og:type" content="website" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

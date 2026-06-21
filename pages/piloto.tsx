@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import type React from "react";
 import Head from "next/head";
+import Link from "next/link";
+import { useRouter } from "next/router";
 import PageContainer from "@/components/PageContainer";
 import StatusBadge from "@/components/StatusBadge";
 import EmptyState from "@/components/EmptyState";
@@ -20,6 +22,7 @@ function fmtData(ts: number) {
 function meiaNoite(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); }
 
 export default function Piloto() {
+  const router = useRouter();
   const { toast, ToastHost } = useToast();
   const [cfg, setCfg] = useState<PilotoConfig | null>(null);
   const [ags, setAgs] = useState<Agendamento[]>([]);
@@ -87,24 +90,17 @@ export default function Piloto() {
   if (!cfg) return null;
 
   const futuros = ags.filter((a) => a.status !== "publicado");
-  const ativo = cfg.ativo;
 
-  const toggleBtn = (
-    <button onClick={() => patch({ ativo: !ativo })} role="switch" aria-checked={ativo} aria-label="Ativar piloto automático"
-      style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "9px 16px", borderRadius: RADIUS.md, fontFamily: SANS,
-        border: `1px solid ${ativo ? BRAND : LINE2}`, background: ativo ? "rgba(37,211,102,0.12)" : "transparent",
-        color: ativo ? BRAND : MUTED, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-      <span style={{ width: 34, height: 18, borderRadius: 999, background: ativo ? BRAND : LINE2, position: "relative", transition: "background 0.15s" }}>
-        <span style={{ position: "absolute", top: 2, left: ativo ? 18 : 2, width: 14, height: 14, borderRadius: "50%", background: ativo ? BRAND_INK : FG, transition: "left 0.15s" }} />
-      </span>
-      {ativo ? "Piloto ativo" : "Piloto desligado"}
-    </button>
-  );
+  // Vincula um slot da fila (sem carrossel) à geração com IA: leva o tema pro
+  // /gerar e, ao gerar, o carrossel volta amarrado a este agendamento.
+  function gerarDoSlot(a: Agendamento) {
+    router.push(`/gerar?new=1&tema=${encodeURIComponent(a.tema)}&ag=${a.id}`);
+  }
 
   return (
     <>
       <Head><title>Piloto Automático | FAMOSO®</title></Head>
-      <PageContainer eyebrow="Automação" titulo="Piloto Automático" descricao="Programe a frequência e as pautas. A IA prepara os carrosséis e você publica — ou conecta o Instagram para publicar sozinho." acao={toggleBtn} maxWidth={920}>
+      <PageContainer eyebrow="Planejamento" titulo="Piloto Automático" descricao="Planeje sua frequência e pautas. Gere os carrosséis da fila com 1 clique — a IA monta no DNA da sua marca. Publicação automática no Instagram chega em breve." maxWidth={920}>
 
         {/* Banner Instagram (fase 2) */}
         <div style={{ display: "flex", alignItems: "center", gap: SP.md, marginBottom: SP.xl, borderRadius: RADIUS.lg, border: `1px solid ${LINE2}`, background: CARD, padding: "14px 18px" }}>
@@ -122,7 +118,7 @@ export default function Piloto() {
         </div>
 
         {/* Configuração */}
-        <section style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: RADIUS.lg, padding: SP.xl, marginBottom: SP.xl, fontFamily: SANS, opacity: ativo ? 1 : 0.75 }}>
+        <section style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: RADIUS.lg, padding: SP.xl, marginBottom: SP.xl, fontFamily: SANS }}>
           <h2 style={subTitulo}>Frequência</h2>
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: SP.xl }}>
@@ -158,7 +154,7 @@ export default function Piloto() {
 
           {/* Pautas */}
           <h2 style={{ ...subTitulo, marginTop: SP.xl }}>Pautas</h2>
-          <p style={{ fontSize: 12.5, color: MUTED, margin: "0 0 12px" }}>Temas que alimentam a geração automática (usados em rodízio).</p>
+          <p style={{ fontSize: 12.5, color: MUTED, margin: "0 0 12px" }}>Temas usados ao montar a fila (em rodízio). Cada slot vira um carrossel quando você clica em “Gerar”.</p>
           <div style={{ display: "flex", gap: SP.sm, marginBottom: cfg.pautas.length ? SP.md : 0 }}>
             <input value={novaPauta} onChange={(e) => setNovaPauta(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addPauta(); }}
               placeholder="Ex.: dicas de produtividade" aria-label="Nova pauta" style={{ ...input, flex: 1 }} />
@@ -205,7 +201,19 @@ export default function Piloto() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, color: FG, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.tema}</div>
+                    <div style={{ fontSize: 11.5, color: MUTED, marginTop: 1 }}>{a.carrosselId ? "Carrossel pronto" : "Aguardando geração"}</div>
                   </div>
+                  {a.carrosselId ? (
+                    <Link href={`/gerar?id=${a.carrosselId}`} title="Abrir carrossel"
+                      style={{ flexShrink: 0, padding: "7px 13px", borderRadius: RADIUS.sm, border: `1px solid ${LINE2}`, background: "transparent", color: FG, fontSize: 12, fontWeight: 600, fontFamily: SANS, textDecoration: "none" }}>
+                      Abrir
+                    </Link>
+                  ) : (
+                    <button onClick={() => gerarDoSlot(a)} title="Gerar carrossel com IA para este tema"
+                      style={{ flexShrink: 0, padding: "7px 13px", borderRadius: RADIUS.sm, border: "none", background: BRAND, color: BRAND_INK, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: SANS }}>
+                      Gerar
+                    </button>
+                  )}
                   <StatusBadge status={a.status} />
                   <button onClick={() => marcarPublicado(a)} title={a.status === "publicado" ? "Marcar como agendado" : "Marcar como publicado"}
                     aria-label={a.status === "publicado" ? "Marcar como agendado" : "Marcar como publicado"}

@@ -131,7 +131,7 @@ export default function Dashboard() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: SP.md, marginBottom: SP.xl }}>
           <MetricCard label="Carrosséis" value={carrosseis.length} hint="total criados" icon={Ico("M3 5h18v14H3z")} />
           <MetricCard label="Agendados" value={agCount.agendado} hint="na fila do piloto" icon={Ico("M8 2v4M16 2v4M3 10h18M5 6h14v14H5z")} />
-          <MetricCard label="Publicados" value={agCount.publicado} hint="via piloto" accent icon={Ico("M20 6 9 17l-5-5")} />
+          <MetricCard label="Publicados" value={agCount.publicado} hint="marcados na fila" accent icon={Ico("M20 6 9 17l-5-5")} />
           <MetricCard label="Último gerado" value={ultimoGeradoTxt} hint={recentes[0] ? "data do último" : "nenhum ainda"} icon={Ico("M12 8v4l3 2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z")} />
         </div>
 

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import Anthropic from "@anthropic-ai/sdk";
-import { requireAuth, rateLimited } from "@/lib/api-auth";
+import { requireAuth, rateLimited, checkQuota } from "@/lib/api-auth";
 
 export const config = {
   // base64 infla ~33%; 8mb de body comporta arquivo decodificado de ~6MB
@@ -20,6 +20,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (await rateLimited(user.id, 10, 60_000)) {
     return res.status(429).json({ ok: false, error: "Muitas requisições. Aguarde um minuto." });
+  }
+
+  const quota = await checkQuota(req);
+  if (!quota.allowed) {
+    return res.status(429).json({ ok: false, error: "Você atingiu o limite do seu plano. Tente amanhã ou faça upgrade.", quota: true });
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {

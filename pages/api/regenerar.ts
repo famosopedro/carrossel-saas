@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import Anthropic from "@anthropic-ai/sdk";
-import { requireAuth, rateLimited } from "@/lib/api-auth";
+import { requireAuth, rateLimited, checkQuota } from "@/lib/api-auth";
 
 const client = new Anthropic();
 const T = (s: string | undefined, max: number) => (s ?? "").slice(0, max);
@@ -13,6 +13,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (await rateLimited(user.id, 20, 60_000)) {
     return res.status(429).json({ error: "Muitas requisições. Aguarde um minuto." });
+  }
+
+  const quota = await checkQuota(req);
+  if (!quota.allowed) {
+    return res.status(429).json({ error: "Você atingiu o limite de gerações do seu plano. Tente amanhã ou faça upgrade.", quota: true });
   }
 
   const { tema, variante, posicao, total, nomeMarca } = req.body as {
@@ -54,7 +59,10 @@ Pode usar **negrito** e ==realce== com moderação. Tom direto, confiante, edito
       messages: [{ role: "user", content: prompt }],
     });
     const text = message.content[0].type === "text" ? message.content[0].text : "";
-    const slide = JSON.parse(text.trim());
+    // strip markdown code fences se o modelo embrulhar o JSON
+    const clean = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    const slide = JSON.parse(clean);
+    if (!slide || typeof slide !== "object") throw new Error("shape inválido");
     return res.status(200).json({ slide });
   } catch (err) {
     console.error(err);

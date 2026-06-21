@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type React from "react";
 import Sidebar from "./Sidebar";
+import SyncIndicator from "./SyncIndicator";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { BG, SURFACE, FG, MUTED, LINE, SP } from "@/lib/ui";
 
@@ -29,6 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: BG, color: FG }}>
         <Sidebar />
         <main id="conteudo" className="app-main" style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>{children}</main>
+        <SyncIndicator />
       </div>
     );
   }
@@ -64,6 +66,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       <main id="conteudo" className="app-main">{children}</main>
+      <SyncIndicator />
     </div>
   );
 }

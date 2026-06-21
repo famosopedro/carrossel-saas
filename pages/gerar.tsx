@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
-import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, getPilotoConfig, saveAgendamento, novoId, DEFAULT_BRAND, FONTES, FONTES_SERIF, PESOS, novoSlide, deriveVariante, migrarSlide, VARIANTES, type BrandConfig, type Slide, type SlideVariante, type ListaItem, type ChatMsg, type TextAlign, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
+import { getMarca, saveMarca, saveCarrossel, getCarrossel, getUltimoId, setUltimoId, getPilotoConfig, getAgendamentos, saveAgendamento, novoId, DEFAULT_BRAND, FONTES, FONTES_SERIF, PESOS, novoSlide, deriveVariante, migrarSlide, VARIANTES, type BrandConfig, type Slide, type SlideVariante, type ListaItem, type ChatMsg, type TextAlign, type NumeracaoPosicao, type NumeracaoEstilo } from "@/lib/storage";
 import SlideRender, { DIM } from "@/components/SlideRender";
 import RichField from "@/components/RichField";
 import IconPicker from "@/components/IconPicker";
@@ -49,6 +49,7 @@ export default function Gerar() {
   const logoFileRef = useRef<HTMLInputElement>(null);
   const assetFileRef = useRef<HTMLInputElement>(null);
   const criadoEmRef = useRef<number>(0); // setado ao gerar ou carregar
+  const agRef = useRef<string | null>(null); // agendamento do piloto a vincular após gerar
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const exportRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -89,6 +90,14 @@ export default function Gerar() {
   }
 
   useEffect(() => { setMarca(getMarca()); }, []);
+
+  // Vindo do Piloto: ?tema= pré-preenche e ?ag= guarda o agendamento a vincular
+  // quando o carrossel for gerado e salvo.
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (typeof router.query.tema === "string" && router.query.tema) setTema(router.query.tema);
+    agRef.current = typeof router.query.ag === "string" ? router.query.ag : null;
+  }, [router.isReady, router.query.tema, router.query.ag]);
 
   // Carrega carrossel: ?id= vindo do dashboard (corrige "Editar"), senão retoma o último rascunho.
   // ?new=1 (botão "Novo carrossel") força começar em branco.
@@ -143,13 +152,23 @@ export default function Gerar() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro desconhecido");
       // carrossel novo = id novo (não sobrescreve o que já estava salvo)
-      setCarrosselId(`c_${Date.now()}`);
+      const novoCarrosselId = `c_${Date.now()}`;
+      setCarrosselId(novoCarrosselId);
       criadoEmRef.current = Date.now();
       setSlides((data.slides as Slide[]).map(migrarSlide));
       setSel(0);
+      // Veio do Piloto: vincula o carrossel gerado ao agendamento da fila.
+      if (agRef.current) {
+        const ag = getAgendamentos().find((a) => a.id === agRef.current);
+        if (ag) saveAgendamento({ ...ag, carrosselId: novoCarrosselId });
+        agRef.current = null;
+        toast("Carrossel gerado e vinculado à fila do Piloto");
+      }
     } catch (err) {
       console.error("gerar error:", err);
-      setErro("Não consegui gerar agora. Tente de novo em alguns segundos.");
+      const msg = err instanceof Error ? err.message : "";
+      // erros vindos da API (cota, rate-limit) têm mensagem útil; senão, genérico
+      setErro(msg && msg !== "Erro desconhecido" ? msg : "Não consegui gerar agora. Tente de novo em alguns segundos.");
     } finally { setLoading(false); }
   }
 

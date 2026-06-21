@@ -15,6 +15,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(oauthError);
   const [ok, setOk] = useState<string | null>(null);
+  const [aceito, setAceito] = useState(false);
 
   useEffect(() => {
     if (user) router.replace("/marca");
@@ -35,6 +36,7 @@ export default function Login() {
         if (error) throw error;
         router.replace("/marca");
       } else if (mode === "signup") {
+        if (!aceito) { setErro("Aceite os Termos de Uso e a Política de Privacidade para criar a conta."); setLoading(false); return; }
         const { data, error } = await supabase.auth.signUp({ email, password: senha });
         if (error) throw error;
         // Supabase silently "succeeds" para email já cadastrado — detectar via identities vazio
@@ -59,6 +61,7 @@ export default function Login() {
 
   async function handleGoogle() {
     setErro(null);
+    if (mode === "signup" && !aceito) { setErro("Aceite os Termos de Uso e a Política de Privacidade para criar a conta."); return; }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}${router.basePath}/marca` },
@@ -119,6 +122,19 @@ export default function Login() {
                   style={inputStyle}
                 />
               </div>
+            )}
+
+            {mode === "signup" && (
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 11.5, color: MUTED, lineHeight: 1.5, cursor: "pointer" }}>
+                <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)}
+                  style={{ marginTop: 1, accentColor: ACCENT, flexShrink: 0 }} />
+                <span>
+                  Li e aceito os{" "}
+                  <a href="https://www.famosopedro.com.br/termos-de-uso" target="_blank" rel="noopener noreferrer" style={{ color: FG, textDecoration: "underline" }}>Termos de Uso</a>
+                  {" "}e a{" "}
+                  <a href="https://www.famosopedro.com.br/politica-de-privacidade" target="_blank" rel="noopener noreferrer" style={{ color: FG, textDecoration: "underline" }}>Política de Privacidade</a>.
+                </span>
+              </label>
             )}
 
             {erro && <p role="alert" aria-live="assertive" style={{ fontSize: 12, color: "#f87171", margin: 0 }}>{erro}</p>}

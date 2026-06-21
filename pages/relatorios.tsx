@@ -57,7 +57,7 @@ export default function Relatorios() {
               <MetricCard label="Carrosséis" value={carrosseis.length} hint="criados no total" icon={Ico("M3 5h18v14H3z")} />
               <MetricCard label="Slides" value={totalSlides} hint="gerados no total" icon={Ico("M4 4h10v10H4zM10 10h10v10H10z")} />
               <MetricCard label="Agendados" value={agendados} hint="na fila" icon={Ico("M8 2v4M16 2v4M3 10h18M5 6h14v14H5z")} />
-              <MetricCard label="Publicados" value={publicados} hint="via piloto" accent icon={Ico("M20 6 9 17l-5-5")} />
+              <MetricCard label="Publicados" value={publicados} hint="marcados na fila" accent icon={Ico("M20 6 9 17l-5-5")} />
             </div>
 
             {/* Gráfico de produção */}

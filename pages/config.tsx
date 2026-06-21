@@ -6,12 +6,13 @@ import { useRouter } from "next/router";
 import PageContainer from "@/components/PageContainer";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 import { wipeRemote } from "@/lib/sync";
 import {
   getPerfis, savePerfis, getPerfilAtivoId, setPerfilAtivoId,
   type BrandProfile,
 } from "@/lib/storage";
-import { CARD, FG, MUTED, LINE, LINE2, BRAND, BRAND_INK, SP, RADIUS, SANS, SERIF } from "@/lib/ui";
+import { BG, CARD, FG, MUTED, LINE, LINE2, BRAND, BRAND_INK, SP, RADIUS, SANS, SERIF } from "@/lib/ui";
 
 const LS_KEYS = ["famoso_perfis", "famoso_perfil_ativo", "famoso_carrosseis", "famoso_ultimo_id", "famoso_marca", "famoso_agendamentos", "famoso_piloto"];
 
@@ -32,6 +33,8 @@ export default function Config() {
   const [perfis, setPerfis] = useState<BrandProfile[]>([]);
   const [ativoId, setAtivoId] = useState("");
   const [confirmarLimpar, setConfirmarLimpar] = useState(false);
+  const [confirmarExcluir, setConfirmarExcluir] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
 
   useEffect(() => { setPerfis(getPerfis()); setAtivoId(getPerfilAtivoId()); }, []);
 
@@ -56,6 +59,27 @@ export default function Config() {
     await wipeRemote(); // sem isso, o hydrate() no reload traz tudo de volta da nuvem
     toast("Dados limpos");
     setTimeout(() => router.reload(), 600);
+  }
+
+  async function excluirConta() {
+    if (!confirmarExcluir) { setConfirmarExcluir(true); setTimeout(() => setConfirmarExcluir(false), 5000); return; }
+    setExcluindo(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch("/api/delete-account", {
+        method: "POST",
+        headers: { Authorization: session?.access_token ? `Bearer ${session.access_token}` : "" },
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) { toast(json.error || "Não consegui excluir.", "erro"); setExcluindo(false); setConfirmarExcluir(false); return; }
+      LS_KEYS.forEach((k) => localStorage.removeItem(k));
+      await signOut();
+      router.push("/login");
+    } catch {
+      toast("Falha ao excluir. Tente de novo.", "erro");
+      setExcluindo(false);
+      setConfirmarExcluir(false);
+    }
   }
 
   return (
@@ -111,16 +135,29 @@ export default function Config() {
         </Secao>
 
         {/* Zona de perigo */}
-        <Secao titulo="Dados e privacidade" descricao="Seus dados ficam neste navegador e sincronizados com sua conta. Para excluir permanentemente a conta e os dados, fale com o suporte.">
+        <Secao titulo="Dados e privacidade" descricao="Seus dados ficam neste navegador e sincronizados com sua conta. Você pode limpar os dados deste aparelho ou excluir permanentemente a conta e tudo que está na nuvem.">
           <div style={{ display: "flex", gap: SP.md, flexWrap: "wrap", alignItems: "center" }}>
             <button onClick={limparDados}
-              style={{ padding: "9px 16px", borderRadius: RADIUS.md, border: `1px solid var(--danger)`, background: confirmarLimpar ? "var(--danger)" : "transparent", color: confirmarLimpar ? "#fff" : "var(--danger)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: SANS }}>
+              style={{ padding: "9px 16px", borderRadius: RADIUS.md, border: `1px solid ${LINE2}`, background: confirmarLimpar ? FG : "transparent", color: confirmarLimpar ? BG : FG, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: SANS }}>
               {confirmarLimpar ? "Confirmar limpeza" : "Limpar dados locais"}
             </button>
             <a href="https://www.famosopedro.com.br/politica-de-privacidade" target="_blank" rel="noopener noreferrer"
               style={{ fontSize: 12.5, color: MUTED, fontFamily: SANS, textDecoration: "underline" }}>
               Política de privacidade
             </a>
+            <a href="https://www.famosopedro.com.br/termos-de-uso" target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 12.5, color: MUTED, fontFamily: SANS, textDecoration: "underline" }}>
+              Termos de uso
+            </a>
+          </div>
+          <div style={{ marginTop: SP.lg, paddingTop: SP.lg, borderTop: `1px solid ${LINE}` }}>
+            <div style={{ fontSize: 12.5, color: MUTED, marginBottom: 10, lineHeight: 1.5 }}>
+              Excluir a conta apaga permanentemente seu login, perfis de marca, carrosséis e agendamentos — na nuvem e neste aparelho. Não dá pra desfazer.
+            </div>
+            <button onClick={excluirConta} disabled={excluindo}
+              style={{ padding: "9px 16px", borderRadius: RADIUS.md, border: `1px solid var(--danger)`, background: confirmarExcluir ? "var(--danger)" : "transparent", color: confirmarExcluir ? "#fff" : "var(--danger)", fontSize: 13, fontWeight: 600, cursor: excluindo ? "not-allowed" : "pointer", fontFamily: SANS, opacity: excluindo ? 0.6 : 1 }}>
+              {excluindo ? "Excluindo…" : confirmarExcluir ? "Confirmar exclusão da conta" : "Excluir conta e todos os dados"}
+            </button>
           </div>
         </Secao>
       </PageContainer>

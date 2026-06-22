@@ -34,17 +34,14 @@ export async function generateImage(
     // Gemini — Imagen 3 (predict). Retorna imagem em base64.
     // Suporta chaves no formato AIzaSy... (?key=) e AQ.... (Bearer OAuth).
     const model = "imagen-3.0-generate-002";
-    const isBearer = key.startsWith("AQ.");
-    const geminiUrl = isBearer
-      ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict`
-      : `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${encodeURIComponent(key)}`;
-    const geminiHeaders: Record<string, string> = { "Content-Type": "application/json" };
-    if (isBearer) geminiHeaders["Authorization"] = `Bearer ${key}`;
-    const resp = await fetch(geminiUrl, {
-      method: "POST",
-      headers: geminiHeaders,
-      body: JSON.stringify({ instances: [{ prompt }], parameters: { sampleCount: 1 } }),
-    });
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${encodeURIComponent(key)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instances: [{ prompt }], parameters: { sampleCount: 1 } }),
+      },
+    );
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) return { error: data?.error?.message || `Gemini: erro ${resp.status}` };
     const b64 = data?.predictions?.[0]?.bytesBase64Encoded;

@@ -9,17 +9,14 @@ const PROVIDERS = ["gemini", "openai"];
 async function testGeminiKey(encrypted: string): Promise<{ valid: boolean; debug?: string }> {
   try {
     const apiKey = await decryptKey(encrypted);
-    const isBearer = apiKey.startsWith("AQ.");
-    const url = isBearer
-      ? "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-      : `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (isBearer) headers["Authorization"] = `Bearer ${apiKey}`;
-    const resp = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ contents: [{ parts: [{ text: "hi" }] }] }),
-    });
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: "hi" }] }] }),
+      }
+    );
     if (!resp.ok && resp.status !== 429) {
       const body = await resp.text().catch(() => "");
       return { valid: false, debug: `HTTP ${resp.status}: ${body.slice(0, 500)}` };

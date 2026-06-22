@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { SURFACE, CARD, FG, MUTED, FAINT, LINE, LINE2, ACCENT, BG, BRAND, BRAND_INK } from "@/lib/ui";
+import { useAuth } from "@/lib/auth";
 
 type Oferta = {
   eyebrow: string;
@@ -62,6 +63,7 @@ const OFERTAS: Oferta[] = [
 const INTERVALO = 5000;
 
 export default function PromoRail() {
+  const { plano } = useAuth();
   const [idx, setIdx] = useState(0);
   const pausado = useRef(false);
 
@@ -73,6 +75,9 @@ export default function PromoRail() {
     }, INTERVALO);
     return () => clearInterval(t);
   }, []);
+
+  // Profissional não vê a barra promocional; essencial e sem-plano veem.
+  if (plano === "profissional") return null;
 
   const o = OFERTAS[idx];
 

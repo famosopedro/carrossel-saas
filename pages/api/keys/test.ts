@@ -57,9 +57,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     valid = result.valid;
     debug = result.debug;
   } else {
-    const result = await generateImage("a plain solid blue circle on white background", provider, encrypted);
-    valid = !("error" in result);
-    if ("error" in result) debug = result.error;
+    // Testa chave OpenAI via chat (sem custo), não DALL-E
+    try {
+      const plainKey = await (await import("@/lib/crypto")).decryptKey(encrypted);
+      const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${plainKey}` },
+        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: "hi" }], max_tokens: 1 }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      valid = resp.ok || resp.status === 429;
+      if (!valid) debug = data?.error?.message || `OpenAI: erro ${resp.status}`;
+    } catch (err) {
+      valid = false;
+      debug = err instanceof Error ? err.message : String(err);
+    }
   }
 
   await admin

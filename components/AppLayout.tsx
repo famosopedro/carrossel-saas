@@ -60,7 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 border: `1px solid ${LINE}`, background: BG, color: FG, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <IconClose />
             </button>
-            <Sidebar onNavigate={() => setOpen(false)} />
+            <Sidebar onNavigate={() => setOpen(false)} collapsible={false} />
           </div>
         </>
       )}

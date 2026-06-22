@@ -64,7 +64,7 @@ export default function ApiKeysConfig() {
       const resp = await fetch(`${basePath}/api/keys/test`, { method: "POST", headers: await authHeaders(), body: JSON.stringify({ provider: p }) });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) { setMensagem(p, data.error || "Falha no teste."); return; }
-      setMensagem(p, data.valid ? "Conexão válida ✓" : "Chave inválida ou sem acesso.");
+      setMensagem(p, data.valid ? "Conexão válida ✓" : `Chave inválida. ${data.debug ?? ""}`);
       await carregar();
     } catch { setMensagem(p, "Falha de rede no teste."); }
     finally { setBusy(null); }

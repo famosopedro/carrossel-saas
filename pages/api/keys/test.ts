@@ -6,7 +6,7 @@ import { decryptKey } from "@/lib/crypto";
 
 const PROVIDERS = ["gemini", "openai"];
 
-async function testGeminiKey(encrypted: string): Promise<boolean> {
+async function testGeminiKey(encrypted: string): Promise<{ valid: boolean; debug?: string }> {
   try {
     const apiKey = await decryptKey(encrypted);
     const resp = await fetch(
@@ -17,15 +17,13 @@ async function testGeminiKey(encrypted: string): Promise<boolean> {
         body: JSON.stringify({ contents: [{ parts: [{ text: "hi" }] }] }),
       }
     );
-    if (!resp.ok) {
+    if (!resp.ok && resp.status !== 429) {
       const body = await resp.text().catch(() => "");
-      console.error("[keys/test] gemini resp", resp.status, body.slice(0, 300));
+      return { valid: false, debug: `HTTP ${resp.status}: ${body.slice(0, 500)}` };
     }
-    // 429 = rate limit → chave válida, só quota esgotada no momento
-    return resp.ok || resp.status === 429;
+    return { valid: true };
   } catch (err) {
-    console.error("[keys/test] gemini error", err instanceof Error ? err.message : String(err));
-    return false;
+    return { valid: false, debug: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -53,8 +51,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Gemini: testa via API de texto (grátis, sem billing). OpenAI: gera imagem simples.
   let valid: boolean;
+  let debug: string | undefined;
   if (provider === "gemini") {
-    valid = await testGeminiKey(encrypted);
+    const result = await testGeminiKey(encrypted);
+    valid = result.valid;
+    debug = result.debug;
   } else {
     const result = await generateImage("a plain solid blue circle on white background", provider, encrypted);
     valid = !("error" in result);
@@ -66,5 +67,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq("user_id", user.id)
     .eq("provider", provider);
 
-  return res.status(200).json({ valid, provider });
+  return res.status(200).json({ valid, provider, ...(debug ? { debug } : {}) });
 }

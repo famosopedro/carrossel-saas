@@ -59,6 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else {
     const result = await generateImage("a plain solid blue circle on white background", provider, encrypted);
     valid = !("error" in result);
+    if ("error" in result) debug = result.error;
   }
 
   await admin

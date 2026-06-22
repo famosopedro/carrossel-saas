@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { hydrate, clearSyncUser } from "./sync";
+import { PLANOS, getLimites, type PlanoKey } from "./planos";
+
+type Limites = ReturnType<typeof getLimites>;
 
 type AuthCtx = {
   user: User | null;
@@ -9,14 +12,20 @@ type AuthCtx = {
   loading: boolean;
   oauthError: string | null;
   signOut: () => Promise<void>;
+  plano: PlanoKey | null;
+  limites: Limites | null;
+  loadingPlano: boolean;
 };
 
-const AuthContext = createContext<AuthCtx>({ user: null, session: null, loading: true, oauthError: null, signOut: async () => {} });
+const AuthContext = createContext<AuthCtx>({ user: null, session: null, loading: true, oauthError: null, signOut: async () => {}, plano: null, limites: null, loadingPlano: false });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [oauthError, setOauthError] = useState<string | null>(null);
+  const [plano, setPlano] = useState<PlanoKey | null>(null);
+  const [limites, setLimites] = useState<Limites | null>(null);
+  const [loadingPlano, setLoadingPlano] = useState(false);
 
   useEffect(() => {
     // Atualiza em mudanças futuras (refresh de token, signOut em outra aba).
@@ -74,12 +83,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Busca a subscription ativa do usuário e expõe plano/limites no contexto.
+  // Roda quando o usuário muda; RLS garante que só lê a própria subscription.
+  const userId = session?.user?.id ?? null;
+  useEffect(() => {
+    if (!userId) { setPlano(null); setLimites(null); setLoadingPlano(false); return; }
+    let cancel = false;
+    setLoadingPlano(true);
+    (async () => {
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("plano, status")
+        .eq("user_id", userId)
+        .in("status", ["trial", "active"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancel) return;
+      const p = data?.plano as PlanoKey | undefined;
+      if (p && p in PLANOS) { setPlano(p); setLimites(getLimites(p)); }
+      else { setPlano(null); setLimites(null); }
+      setLoadingPlano(false);
+    })();
+    return () => { cancel = true; };
+  }, [userId]);
+
   async function signOut() {
     await supabase.auth.signOut();
   }
 
   return (
-    <AuthContext.Provider value={{ user: session?.user ?? null, session, loading, oauthError, signOut }}>
+    <AuthContext.Provider value={{ user: session?.user ?? null, session, loading, oauthError, signOut, plano, limites, loadingPlano }}>
       {children}
     </AuthContext.Provider>
   );

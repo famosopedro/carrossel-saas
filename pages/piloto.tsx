@@ -7,6 +7,7 @@ import PageContainer from "@/components/PageContainer";
 import StatusBadge from "@/components/StatusBadge";
 import EmptyState from "@/components/EmptyState";
 import { useToast } from "@/components/Toast";
+import { useAuth } from "@/lib/auth";
 import {
   getPilotoConfig, savePilotoConfig, getAgendamentos, saveAgendamento, deleteAgendamento, novoId,
   type PilotoConfig, type Agendamento,
@@ -24,6 +25,7 @@ function meiaNoite(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); ret
 export default function Piloto() {
   const router = useRouter();
   const { toast, ToastHost } = useToast();
+  const { limites } = useAuth();
   const [cfg, setCfg] = useState<PilotoConfig | null>(null);
   const [ags, setAgs] = useState<Agendamento[]>([]);
   const [novaPauta, setNovaPauta] = useState("");
@@ -56,6 +58,7 @@ export default function Piloto() {
   // Cria agendamentos para os próximos dias que batem com a config (2 semanas)
   function gerarAgenda() {
     if (!cfg) return;
+    if (!limites?.agendamento) { toast("Agendamento automático está disponível no plano Profissional.", "erro"); return; }
     if (!cfg.dias.length) { toast("Selecione ao menos um dia da semana", "erro"); return; }
     if (!cfg.pautas.length) { toast("Adicione ao menos uma pauta", "erro"); return; }
     const existentes = new Set(getAgendamentos().map((a) => a.data));

@@ -9,6 +9,7 @@ import PromoRail from "@/components/PromoRail";
 import { BG, FG, MUTED, LINE, CARD, OK, eyebrow } from "@/lib/ui";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth";
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -161,6 +162,7 @@ export default function MarcaPage() {
   const fonteSansRef = useRef<HTMLInputElement>(null);
   const fonteSerifRef = useRef<HTMLInputElement>(null);
 
+  const { limites } = useAuth();
   const [perfis, setPerfis] = useState<BrandProfile[]>([]);
   const [perfilAtivoId, setPerfilAtivoIdState] = useState<string | null>(null);
   const [criandoNovo, setCriandoNovo] = useState(false);
@@ -252,6 +254,14 @@ export default function MarcaPage() {
   async function criarPerfil() {
     const nome = novoNome.trim();
     if (!nome) return;
+
+    // Limite de perfis por plano (sem plano definido → trata como 1).
+    const perfisMax = limites?.perfis_max ?? 1;
+    if (getPerfis().length >= perfisMax) {
+      setErroAnalise("Você atingiu o limite de perfis do seu plano. Faça upgrade para o Profissional para conectar até 3 perfis.");
+      return;
+    }
+
     const id = `perfil_${Date.now()}`;
 
     const oversized = novoArquivos.find(f => f.type === "application/pdf" && f.size > 3 * 1024 * 1024);

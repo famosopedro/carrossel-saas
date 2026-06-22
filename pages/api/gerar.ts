@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import Anthropic from "@anthropic-ai/sdk";
-import { requireAuth, rateLimited, checkQuota } from "@/lib/api-auth";
+import { requireAuth, rateLimited } from "@/lib/api-auth";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { getLimites, type PlanoKey } from "@/lib/planos";
 
 const client = new Anthropic();
 const T = (s: string | undefined, max: number) => (s ?? "").slice(0, max);
@@ -15,9 +17,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(429).json({ error: "Muitas requisições. Aguarde um minuto." });
   }
 
-  const quota = await checkQuota(req);
-  if (!quota.allowed) {
-    return res.status(429).json({ error: "Você atingiu o limite de gerações do seu plano. Tente amanhã ou faça upgrade.", quota: true });
+  // ── Cota por plano (subscription + usage mensal) ──
+  // Service role: leitura/escrita autoritativa, ignora RLS. Sem a env
+  // SUPABASE_SERVICE_ROLE_KEY o controle não roda (fail-open) — a geração segue,
+  // mas o limite só passa a valer quando a env estiver setada em produção.
+  const admin = getSupabaseAdmin();
+  const periodo = new Date().toISOString().slice(0, 7); // 'YYYY-MM' (UTC)
+  let planoAtivo: PlanoKey | null = null;
+  let geradosAtual = 0;
+
+  if (admin) {
+    const { data: sub } = await admin
+      .from("subscriptions")
+      .select("plano, status")
+      .eq("user_id", user.id)
+      .in("status", ["trial", "active"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!sub) {
+      return res.status(403).json({ error: "Sem plano ativo. Assine um plano para gerar carrosséis." });
+    }
+    planoAtivo = sub.plano as PlanoKey;
+
+    const { data: usageRow } = await admin
+      .from("usage")
+      .select("carrosseis_gerados")
+      .eq("user_id", user.id)
+      .eq("periodo", periodo)
+      .maybeSingle();
+
+    geradosAtual = usageRow?.carrosseis_gerados ?? 0;
+    if (geradosAtual >= getLimites(planoAtivo).carrosseis_por_mes) {
+      return res.status(403).json({ error: "Limite de carrosséis do seu plano atingido este mês." });
+    }
   }
 
   const { tema, quantidade: qtdRaw, nomeMarca, descricao, publicoAlvo, conteudoPublico, estiloComunicacao, idioma } = req.body as {
@@ -96,6 +130,14 @@ Responda SOMENTE com array JSON válido, sem markdown. Inclua só os campos da v
       (s) => s && typeof s === "object" && VARIANTES.includes(s.variante) && typeof s.titulo === "string",
     );
     if (slides.length === 0) throw new Error("nenhum slide válido");
+
+    // Geração ok → consome 1 do plano (upsert no período atual).
+    if (admin && planoAtivo) {
+      await admin.from("usage").upsert(
+        { user_id: user.id, periodo, carrosseis_gerados: geradosAtual + 1, updated_at: new Date().toISOString() },
+        { onConflict: "user_id,periodo" },
+      );
+    }
 
     return res.status(200).json({ slides });
   } catch (err) {

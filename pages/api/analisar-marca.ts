@@ -1,18 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import Anthropic from "@anthropic-ai/sdk";
 import { requireAuth, rateLimited, checkQuota } from "@/lib/api-auth";
 
 export const config = {
-  // base64 infla ~33%; 8mb de body comporta arquivo decodificado de ~6MB
   api: { bodyParser: { sizeLimit: "8mb" } },
 };
 
 const ALLOWED_IMAGE = ["image/png", "image/jpeg", "image/gif", "image/webp"] as const;
 const ALLOWED = [...ALLOWED_IMAGE, "application/pdf"];
-const MAX_BYTES = 6 * 1024 * 1024; // tamanho real do arquivo decodificado
+const MAX_BYTES = 6 * 1024 * 1024;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Mesma origem: sem CORS aberto.
   if (req.method !== "POST") return res.status(405).end();
 
   const user = await requireAuth(req, res);
@@ -27,7 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(429).json({ ok: false, error: "Você atingiu o limite do seu plano. Tente amanhã ou faça upgrade.", quota: true });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) {
     return res.status(503).json({ ok: false, error: "Serviço indisponível no momento." });
   }
 
@@ -36,40 +34,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!ALLOWED.includes(mimeType)) {
     return res.status(400).json({ ok: false, error: "Formato não suportado. Use PNG, JPG, WebP ou PDF." });
   }
-  // base64.length * 3/4 ≈ bytes reais do arquivo
   if (Math.floor(base64.length * 0.75) > MAX_BYTES) {
     return res.status(413).json({ ok: false, error: "Arquivo muito grande. Máximo 6 MB." });
   }
 
-  const isPdf = mimeType === "application/pdf";
-  const contentBlock = isPdf
-    ? ({
-        type: "document" as const,
-        source: { type: "base64" as const, media_type: "application/pdf" as const, data: base64 },
-      } as const)
-    : ({
-        type: "image" as const,
-        source: {
-          type: "base64" as const,
-          media_type: mimeType as (typeof ALLOWED_IMAGE)[number],
-          data: base64,
-        },
-      } as const);
-
-  const client = new Anthropic();
-
-  try {
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 512,
-    messages: [
-      {
-        role: "user",
-        content: [
-          contentBlock,
-          {
-            type: "text",
-            text: `Analise esta identidade visual e extraia os dados. Retorne APENAS JSON válido, sem markdown, sem explicação.
+  const textPrompt = `Analise esta identidade visual e extraia os dados. Retorne APENAS JSON válido, sem markdown, sem explicação.
 
 {
   "nomeMarca": "nome da marca visto no documento",
@@ -78,21 +47,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   "fonteSerif": "nome exato da fonte serif ou secundária se houver, senão string vazia",
   "url": "URL do site se visível, senão string vazia",
   "rodapeTexto": "slogan ou tagline curta se visível, senão string vazia"
-}`,
-          },
-        ],
-      },
-    ],
-  });
+}`;
 
-  const text = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
   try {
-    const match = text.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(match ? match[0] : text);
-    res.json({ ok: true, config: parsed });
-  } catch {
-    res.status(502).json({ ok: false, error: "Não foi possível interpretar a resposta." });
-  }
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: mimeType, data: base64 } },
+              { text: textPrompt },
+            ],
+          }],
+          generationConfig: { maxOutputTokens: 512 },
+        }),
+      },
+    );
+
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      console.error("analisar-marca gemini:", resp.status, body.slice(0, 300));
+      return res.status(500).json({ ok: false, error: "Não consegui ler essa identidade. Tente outra imagem ou PDF." });
+    }
+
+    const data = await resp.json();
+    const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+    try {
+      const match = text.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : text);
+      res.json({ ok: true, config: parsed });
+    } catch {
+      res.status(502).json({ ok: false, error: "Não foi possível interpretar a resposta." });
+    }
   } catch (err) {
     console.error("analisar-marca:", err);
     res.status(500).json({ ok: false, error: "Não consegui ler essa identidade. Tente outra imagem ou PDF." });

@@ -1,9 +1,31 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import Anthropic from "@anthropic-ai/sdk";
 import { requireAuth, rateLimited, checkQuota } from "@/lib/api-auth";
 
-const client = new Anthropic();
 const T = (s: string | undefined, max: number) => (s ?? "").slice(0, max);
+
+async function callGemini(prompt: string, maxTokens: number): Promise<string> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY não configurada");
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: maxTokens },
+      }),
+    },
+  );
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => "");
+    throw new Error(`Gemini ${resp.status}: ${body.slice(0, 300)}`);
+  }
+  const data = await resp.json();
+  const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Gemini não retornou texto");
+  return text;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -53,13 +75,7 @@ ${campos[varianteS]}
 Pode usar **negrito** e ==realce== com moderação. Tom direto, confiante, editorial. Sem emojis. Responda SOMENTE o JSON, sem markdown.`;
 
   try {
-    const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 600,
-      messages: [{ role: "user", content: prompt }],
-    });
-    const text = message.content[0].type === "text" ? message.content[0].text : "";
-    // strip markdown code fences se o modelo embrulhar o JSON
+    const text = await callGemini(prompt, 600);
     const clean = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
     const slide = JSON.parse(clean);
     if (!slide || typeof slide !== "object") throw new Error("shape inválido");

@@ -1,12 +1,34 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import Anthropic from "@anthropic-ai/sdk";
 import { requireAuth, rateLimited } from "@/lib/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getLimites, type PlanoKey } from "@/lib/planos";
 import { generateImage } from "@/lib/image-generation";
 
-const client = new Anthropic();
 const T = (s: string | undefined, max: number) => (s ?? "").slice(0, max);
+
+async function callGemini(prompt: string, maxTokens: number): Promise<string> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY não configurada");
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: maxTokens },
+      }),
+    },
+  );
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => "");
+    throw new Error(`Gemini ${resp.status}: ${body.slice(0, 300)}`);
+  }
+  const data = await resp.json();
+  const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Gemini não retornou texto");
+  return text;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -18,12 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(429).json({ error: "Muitas requisições. Aguarde um minuto." });
   }
 
-  // ── Cota por plano (subscription + usage mensal) ──
-  // Service role: leitura/escrita autoritativa, ignora RLS. Sem a env
-  // SUPABASE_SERVICE_ROLE_KEY o controle não roda (fail-open) — a geração segue,
-  // mas o limite só passa a valer quando a env estiver setada em produção.
   const admin = getSupabaseAdmin();
-  const periodo = new Date().toISOString().slice(0, 7); // 'YYYY-MM' (UTC)
+  const periodo = new Date().toISOString().slice(0, 7);
   let planoAtivo: PlanoKey | null = null;
   let geradosAtual = 0;
 
@@ -113,18 +131,10 @@ Responda SOMENTE com array JSON válido, sem markdown. Inclua só os campos da v
 [{"variante":"tipografia","titulo":"...","corpo":"...","subtitulo":"..."},{"variante":"lista-icones","titulo":"...","itens":[{"icone":"check","texto":"..."}]},{"variante":"chat","titulo":"...","mensagens":[{"lado":"esq","autor":"Cliente","texto":"..."}]},{"variante":"cta","titulo":"...","subtitulo":"..."}]`;
 
   try {
-    const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 3000,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const text = message.content[0].type === "text" ? message.content[0].text : "";
-    // strip markdown code fences if model wrapped the JSON
+    const text = await callGemini(prompt, 3000);
     const clean = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
     const parsed = JSON.parse(clean);
 
-    // valida shape: precisa ser array de objetos com "variante" conhecida
     const VARIANTES = ["tipografia", "lista-icones", "chat", "cta"];
     if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("shape inválido");
     const slides = parsed.filter(
@@ -132,7 +142,6 @@ Responda SOMENTE com array JSON válido, sem markdown. Inclua só os campos da v
     );
     if (slides.length === 0) throw new Error("nenhum slide válido");
 
-    // Geração ok → consome 1 do plano (upsert no período atual).
     if (admin && planoAtivo) {
       await admin.from("usage").upsert(
         { user_id: user.id, periodo, carrosseis_gerados: geradosAtual + 1, updated_at: new Date().toISOString() },
@@ -140,8 +149,6 @@ Responda SOMENTE com array JSON válido, sem markdown. Inclua só os campos da v
       );
     }
 
-    // Geração de imagem opcional (BYOK do usuário). Só roda se pedido;
-    // caso contrário o fluxo de texto segue inalterado.
     const { generate_image, image_prompt, image_provider } = req.body as {
       generate_image?: boolean; image_prompt?: string; image_provider?: "gemini" | "openai";
     };

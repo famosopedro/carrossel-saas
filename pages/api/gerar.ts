@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { requireAuth, rateLimited } from "@/lib/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getLimites, type PlanoKey } from "@/lib/planos";
+import { generateImage } from "@/lib/image-generation";
 
 const client = new Anthropic();
 const T = (s: string | undefined, max: number) => (s ?? "").slice(0, max);
@@ -137,6 +138,27 @@ Responda SOMENTE com array JSON válido, sem markdown. Inclua só os campos da v
         { user_id: user.id, periodo, carrosseis_gerados: geradosAtual + 1, updated_at: new Date().toISOString() },
         { onConflict: "user_id,periodo" },
       );
+    }
+
+    // Geração de imagem opcional (BYOK do usuário). Só roda se pedido;
+    // caso contrário o fluxo de texto segue inalterado.
+    const { generate_image, image_prompt, image_provider } = req.body as {
+      generate_image?: boolean; image_prompt?: string; image_provider?: "gemini" | "openai";
+    };
+    if (generate_image) {
+      const prov = image_provider === "openai" || image_provider === "gemini" ? image_provider : null;
+      if (!prov) return res.status(400).json({ error: "Provedor de imagem inválido." });
+      if (!admin) return res.status(400).json({ error: "Chave de API não configurada para este provedor." });
+      const { data: row } = await admin
+        .from("user_api_keys")
+        .select("encrypted_key")
+        .eq("user_id", user.id)
+        .eq("provider", prov)
+        .maybeSingle();
+      const encrypted = (row as { encrypted_key?: string } | null)?.encrypted_key;
+      if (!encrypted) return res.status(400).json({ error: "Chave de API não configurada para este provedor." });
+      const image = await generateImage((image_prompt || temaS).slice(0, 1000), prov, encrypted);
+      return res.status(200).json({ slides, image });
     }
 
     return res.status(200).json({ slides });

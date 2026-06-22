@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { wipeRemote } from "@/lib/sync";
+import ApiKeysConfig from "@/components/ApiKeysConfig";
 import {
   getPerfis, savePerfis, getPerfilAtivoId, setPerfilAtivoId,
   type BrandProfile,
@@ -86,6 +87,11 @@ export default function Config() {
     <>
       <Head><title>Configurações | FAMOSO®</title></Head>
       <PageContainer eyebrow="Conta" titulo="Configurações" descricao="Gerencie sua conta, perfis de marca e dados." maxWidth={820}>
+
+        {/* Integrações de IA */}
+        <Secao titulo="Integrações de IA" descricao="Conecte suas chaves de API para gerar imagens nos carrosséis.">
+          <ApiKeysConfig />
+        </Secao>
 
         {/* Conta */}
         <Secao titulo="Conta">

@@ -2,8 +2,26 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireAuth } from "@/lib/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { generateImage } from "@/lib/image-generation";
+import { decryptKey } from "@/lib/crypto";
 
 const PROVIDERS = ["gemini", "openai"];
+
+async function testGeminiKey(encrypted: string): Promise<boolean> {
+  try {
+    const apiKey = await decryptKey(encrypted);
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: "hi" }] }] }),
+      }
+    );
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -27,9 +45,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const encrypted = (row as { encrypted_key?: string } | null)?.encrypted_key;
   if (!encrypted) return res.status(400).json({ error: "Chave de API não configurada para este provedor." });
 
-  // Chamada mínima de teste — gera uma imagem simples.
-  const result = await generateImage("a plain solid blue circle on white background", provider, encrypted);
-  const valid = !("error" in result);
+  // Gemini: testa via API de texto (grátis, sem billing). OpenAI: gera imagem simples.
+  let valid: boolean;
+  if (provider === "gemini") {
+    valid = await testGeminiKey(encrypted);
+  } else {
+    const result = await generateImage("a plain solid blue circle on white background", provider, encrypted);
+    valid = !("error" in result);
+  }
 
   await admin
     .from("user_api_keys")

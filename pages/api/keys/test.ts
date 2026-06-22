@@ -17,8 +17,13 @@ async function testGeminiKey(encrypted: string): Promise<boolean> {
         body: JSON.stringify({ contents: [{ parts: [{ text: "hi" }] }] }),
       }
     );
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      console.error("[keys/test] gemini resp", resp.status, body.slice(0, 300));
+    }
     return resp.ok;
-  } catch {
+  } catch (err) {
+    console.error("[keys/test] gemini error", err instanceof Error ? err.message : String(err));
     return false;
   }
 }

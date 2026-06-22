@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
-import { BG, FG, MUTED, FAINT, LINE, SURFACE, CARD, ACCENT } from "@/lib/ui";
+import { useIsMobile } from "@/lib/useIsMobile";
+import { BG, FG, MUTED, FAINT, LINE, LINE2, SURFACE, CARD, ACCENT, BRAND, BRAND_INK, SERIF, SANS } from "@/lib/ui";
 
 type Mode = "login" | "signup" | "reset";
 
 export default function Login() {
   const { user, oauthError } = useAuth();
   const router = useRouter();
+  const isMobile = useIsMobile(880);
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -69,42 +71,79 @@ export default function Login() {
     if (error) setErro(error.message);
   }
 
-  return (
-    <div style={{ minHeight: "100vh", background: BG, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 380 }}>
-        {/* Logo */}
-        <p style={{ textAlign: "center", fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em", color: FG, marginBottom: 32 }}>
-          FAMOSO<span style={{ color: ACCENT, fontSize: 14, verticalAlign: "super", fontWeight: 700 }}>®</span>
-        </p>
+  const titulo = mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Redefinir senha";
+  const subtitulo = mode === "login" ? "Acesse sua Máquina de Carrosséis." : mode === "signup" ? "Comece com 7 dias grátis." : "Enviamos um link para redefinir.";
 
-        <div style={{ background: SURFACE, border: `1px solid ${LINE}`, borderRadius: 14, padding: "32px 28px" }}>
-          <h1 style={{ margin: "0 0 24px", fontSize: 18, fontWeight: 700, color: FG, letterSpacing: "-0.02em" }}>
-            {mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Redefinir senha"}
-          </h1>
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", background: BG, color: FG, fontFamily: SANS }}>
+      <style>{CSS}</style>
+
+      {/* ── Painel de marca (esquerda) — oculto no mobile ── */}
+      {!isMobile && (
+        <aside style={painelMarca} aria-hidden="true">
+          <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
+            <Wordmark />
+
+            <div style={{ marginTop: "auto", maxWidth: 460 }}>
+              <p style={{ ...eyebrowSerif, marginBottom: 18 }}>Máquina de Carrosséis</p>
+              <h2 style={{ fontSize: 44, lineHeight: 1.05, fontWeight: 800, letterSpacing: "-0.03em", color: FG, margin: "0 0 22px" }}>
+                Carrosséis que parecem<br />de agência. Em minutos.
+              </h2>
+              <p style={{ fontSize: 15.5, lineHeight: 1.55, color: MUTED, margin: "0 0 34px", maxWidth: 400 }}>
+                A IA escreve no DNA da sua marca. Você só revisa e publica.
+              </p>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+                {[
+                  "Identidade aplicada em cada slide",
+                  "Do tema ao post pronto, sem brief",
+                  "Exporte em PNG ou ZIP e publique",
+                ].map((b) => (
+                  <li key={b} style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 14.5, color: FG }}>
+                    <span style={tick} aria-hidden="true">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={BRAND_INK} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                    </span>
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <p style={{ marginTop: "auto", paddingTop: 40, fontSize: 12.5, color: FAINT, fontFamily: SERIF, fontStyle: "italic" }}>
+              Marca que vende não improvisa. — FAMOSO®
+            </p>
+          </div>
+        </aside>
+      )}
+
+      {/* ── Painel de autenticação (direita) ── */}
+      <main style={painelAuth}>
+        <div className="lg-rise" style={{ width: "100%", maxWidth: 380 }}>
+          {/* Logo no mobile (no desktop fica no painel esquerdo) */}
+          {isMobile && <div style={{ textAlign: "center", marginBottom: 28 }}><Wordmark /></div>}
+
+          <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 800, letterSpacing: "-0.025em", color: FG }}>{titulo}</h1>
+          <p style={{ margin: "0 0 28px", fontSize: 14, color: MUTED }}>{subtitulo}</p>
 
           {/* Google */}
           {mode !== "reset" && (
             <>
-              <button
-                onClick={handleGoogle}
-                style={{ width: "100%", padding: "10px 0", borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: FG, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontFamily: "inherit", marginBottom: 20 }}
-              >
+              <button type="button" onClick={handleGoogle} className="lg-google" style={googleBtn}>
                 <GoogleIcon />
                 Continuar com Google
               </button>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0" }}>
                 <div style={{ flex: 1, height: 1, background: LINE }} />
-                <span style={{ fontSize: 11, color: FAINT }}>ou</span>
+                <span style={{ fontSize: 11, color: FAINT, letterSpacing: "0.06em" }}>OU</span>
                 <div style={{ flex: 1, height: 1, background: LINE }} />
               </div>
             </>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
               <label htmlFor="login-email" style={lblStyle}>E-mail</label>
               <input
-                id="login-email"
+                id="login-email" className="lg-input"
                 type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 required autoComplete="email" placeholder="seu@email.com"
                 style={inputStyle}
@@ -115,7 +154,7 @@ export default function Login() {
               <div>
                 <label htmlFor="login-senha" style={lblStyle}>Senha</label>
                 <input
-                  id="login-senha"
+                  id="login-senha" className="lg-input"
                   type="password" value={senha} onChange={(e) => setSenha(e.target.value)}
                   required autoComplete={mode === "login" ? "current-password" : "new-password"}
                   placeholder="••••••••" minLength={6}
@@ -125,9 +164,9 @@ export default function Login() {
             )}
 
             {mode === "signup" && (
-              <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 11.5, color: MUTED, lineHeight: 1.5, cursor: "pointer" }}>
+              <label style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 12, color: MUTED, lineHeight: 1.5, cursor: "pointer" }}>
                 <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)}
-                  style={{ marginTop: 1, accentColor: ACCENT, flexShrink: 0 }} />
+                  style={{ marginTop: 1, accentColor: BRAND, flexShrink: 0, width: 15, height: 15 }} />
                 <span>
                   Li e aceito os{" "}
                   <a href="https://www.famosopedro.com.br/termos-de-uso" target="_blank" rel="noopener noreferrer" style={{ color: FG, textDecoration: "underline" }}>Termos de Uso</a>
@@ -137,38 +176,43 @@ export default function Login() {
               </label>
             )}
 
-            {erro && <p role="alert" aria-live="assertive" style={{ fontSize: 12, color: "#f87171", margin: 0 }}>{erro}</p>}
-            {ok && <p role="status" aria-live="polite" style={{ fontSize: 12, color: "#4ade80", margin: 0 }}>{ok}</p>}
+            {erro && <p role="alert" aria-live="assertive" style={{ fontSize: 12.5, color: "#f87171", margin: 0, lineHeight: 1.45 }}>{erro}</p>}
+            {ok && <p role="status" aria-live="polite" style={{ fontSize: 12.5, color: BRAND, margin: 0, lineHeight: 1.45 }}>{ok}</p>}
 
-            <button
-              type="submit" disabled={loading}
-              style={{ marginTop: 4, padding: "11px 0", borderRadius: 8, border: "none", background: loading ? "#444" : FG, color: BG, fontSize: 13, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit" }}
-            >
-              {loading ? "Aguarde…" : mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar link"}
+            <button type="submit" disabled={loading} className="lg-primary" style={primaryBtn(loading)}>
+              {loading ? "Aguarde…" : mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta grátis" : "Enviar link"}
             </button>
           </form>
 
           {/* Troca de modo */}
-          <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+          <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
             {mode === "login" && (
               <>
-                <button onClick={() => { setMode("signup"); setErro(null); setOk(null); }} style={linkBtn}>
-                  Não tem conta? Criar agora
+                <button onClick={() => { setMode("signup"); setErro(null); setOk(null); }} className="lg-link" style={linkBtn}>
+                  Não tem conta? <strong style={{ color: FG, fontWeight: 700 }}>Criar agora</strong>
                 </button>
-                <button onClick={() => { setMode("reset"); setErro(null); setOk(null); }} style={{ ...linkBtn, color: FAINT }}>
+                <button onClick={() => { setMode("reset"); setErro(null); setOk(null); }} className="lg-link" style={{ ...linkBtn, color: FAINT }}>
                   Esqueci minha senha
                 </button>
               </>
             )}
             {mode !== "login" && (
-              <button onClick={() => { setMode("login"); setErro(null); setOk(null); }} style={linkBtn}>
+              <button onClick={() => { setMode("login"); setErro(null); setOk(null); }} className="lg-link" style={linkBtn}>
                 ← Voltar para login
               </button>
             )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
+  );
+}
+
+function Wordmark() {
+  return (
+    <p style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.03em", color: FG, margin: 0 }}>
+      FAMOSO<span style={{ color: ACCENT, fontSize: 13, verticalAlign: "super", fontWeight: 700 }}>®</span>
+    </p>
   );
 }
 
@@ -191,6 +235,59 @@ function translateError(msg: string): string {
   return msg;
 }
 
-const lblStyle: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 };
-const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 11px", borderRadius: 7, border: `1px solid ${LINE}`, background: BG, color: FG, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
-const linkBtn: React.CSSProperties = { background: "none", border: "none", color: MUTED, fontSize: 12, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" };
+// ── Estilos ──
+const painelMarca: React.CSSProperties = {
+  position: "relative", flex: "1 1 0%", padding: "48px 56px", overflow: "hidden",
+  borderRight: `1px solid ${LINE}`,
+  // glow verde no topo + grade sutil sobre o fundo escuro (vibe editorial dark)
+  backgroundColor: BG,
+  backgroundImage: `radial-gradient(900px 500px at 12% -8%, rgba(37,211,102,0.12), transparent 60%),
+    linear-gradient(${LINE} 1px, transparent 1px), linear-gradient(90deg, ${LINE} 1px, transparent 1px)`,
+  backgroundSize: "auto, 56px 56px, 56px 56px",
+};
+const painelAuth: React.CSSProperties = {
+  flex: "1 1 0%", display: "flex", alignItems: "center", justifyContent: "center",
+  padding: "40px 24px", background: SURFACE,
+};
+const eyebrowSerif: React.CSSProperties = {
+  fontFamily: SERIF, fontStyle: "italic", fontWeight: 500, fontSize: 17, color: BRAND, margin: 0, letterSpacing: "0.01em",
+};
+const tick: React.CSSProperties = {
+  width: 22, height: 22, borderRadius: "50%", background: BRAND, display: "inline-flex",
+  alignItems: "center", justifyContent: "center", flexShrink: 0,
+};
+const lblStyle: React.CSSProperties = {
+  display: "block", fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: "0.08em",
+  textTransform: "uppercase", marginBottom: 7,
+};
+const inputStyle: React.CSSProperties = {
+  width: "100%", padding: "12px 14px", borderRadius: 9, border: `1px solid ${LINE2}`,
+  background: BG, color: FG, fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box",
+};
+const googleBtn: React.CSSProperties = {
+  width: "100%", padding: "12px 0", borderRadius: 9, border: `1px solid ${LINE2}`, background: "transparent",
+  color: FG, fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center",
+  justifyContent: "center", gap: 10, fontFamily: "inherit",
+};
+function primaryBtn(loading: boolean): React.CSSProperties {
+  return {
+    marginTop: 2, padding: "13px 0", borderRadius: 9, border: "none",
+    background: loading ? "var(--btn-disabled)" : BRAND, color: loading ? MUTED : BRAND_INK,
+    fontSize: 14, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit",
+  };
+}
+const linkBtn: React.CSSProperties = {
+  background: "none", border: "none", color: MUTED, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
+};
+
+const CSS = `
+.lg-input{transition:border-color .15s ease, box-shadow .15s ease;}
+.lg-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(37,211,102,0.16);}
+.lg-google:hover{background:var(--card);border-color:var(--muted);}
+.lg-primary:hover:not(:disabled){background:var(--brand-hover);}
+.lg-primary:active:not(:disabled){transform:translateY(1px);}
+.lg-link:hover{color:var(--fg);}
+.lg-rise{animation:lgRise .55s cubic-bezier(.2,.7,.3,1) both;}
+@keyframes lgRise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion: reduce){.lg-rise{animation:none;}}
+`;

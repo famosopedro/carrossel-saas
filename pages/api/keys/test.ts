@@ -21,7 +21,8 @@ async function testGeminiKey(encrypted: string): Promise<boolean> {
       const body = await resp.text().catch(() => "");
       console.error("[keys/test] gemini resp", resp.status, body.slice(0, 300));
     }
-    return resp.ok;
+    // 429 = rate limit → chave válida, só quota esgotada no momento
+    return resp.ok || resp.status === 429;
   } catch (err) {
     console.error("[keys/test] gemini error", err instanceof Error ? err.message : String(err));
     return false;

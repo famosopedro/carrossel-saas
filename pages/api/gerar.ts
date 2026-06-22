@@ -22,6 +22,7 @@ async function callGemini(prompt: string, maxTokens: number): Promise<string> {
   );
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");
+    console.error("GEMINI_ERROR", resp.status, body);
     throw new Error(`Gemini ${resp.status}: ${body.slice(0, 300)}`);
   }
   const data = await resp.json();

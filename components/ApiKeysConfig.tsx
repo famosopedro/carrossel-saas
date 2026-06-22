@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabase";
 import { BG, CARD, FG, MUTED, FAINT, LINE, LINE2, BRAND, BRAND_INK, SP, RADIUS, SANS, input as inputStyle } from "@/lib/ui";
 
@@ -25,6 +26,7 @@ async function authHeaders(): Promise<Record<string, string>> {
 }
 
 export default function ApiKeysConfig() {
+  const { basePath } = useRouter();
   const [status, setStatus] = useState<StatusMap>(DEFAULT_STATUS);
   const [valores, setValores] = useState<Record<Provider, string>>({ gemini: "", openai: "" });
   const [busy, setBusy] = useState<string | null>(null); // ex.: "save:gemini"
@@ -32,10 +34,10 @@ export default function ApiKeysConfig() {
 
   const carregar = useCallback(async () => {
     try {
-      const resp = await fetch("/api/keys/status", { headers: await authHeaders() });
+      const resp = await fetch(`${basePath}/api/keys/status`, { headers: await authHeaders() });
       if (resp.ok) setStatus(await resp.json());
     } catch { /* mantém default */ }
-  }, []);
+  }, [basePath]);
 
   useEffect(() => { void carregar(); }, [carregar]);
 
@@ -46,7 +48,7 @@ export default function ApiKeysConfig() {
     if (key.length < 20) { setMensagem(p, "Chave inválida (mínimo 20 caracteres)."); return; }
     setBusy(`save:${p}`); setMensagem(p, null);
     try {
-      const resp = await fetch("/api/keys/save", { method: "POST", headers: await authHeaders(), body: JSON.stringify({ provider: p, key }) });
+      const resp = await fetch(`${basePath}/api/keys/save`, { method: "POST", headers: await authHeaders(), body: JSON.stringify({ provider: p, key }) });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) { setMensagem(p, data.error || "Falha ao salvar."); return; }
       setValores((v) => ({ ...v, [p]: "" })); // nunca mantém o valor em tela
@@ -59,7 +61,7 @@ export default function ApiKeysConfig() {
   async function testar(p: Provider) {
     setBusy(`test:${p}`); setMensagem(p, "Testando…");
     try {
-      const resp = await fetch("/api/keys/test", { method: "POST", headers: await authHeaders(), body: JSON.stringify({ provider: p }) });
+      const resp = await fetch(`${basePath}/api/keys/test`, { method: "POST", headers: await authHeaders(), body: JSON.stringify({ provider: p }) });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) { setMensagem(p, data.error || "Falha no teste."); return; }
       setMensagem(p, data.valid ? "Conexão válida ✓" : "Chave inválida ou sem acesso.");
@@ -71,7 +73,7 @@ export default function ApiKeysConfig() {
   async function remover(p: Provider) {
     setBusy(`del:${p}`); setMensagem(p, null);
     try {
-      const resp = await fetch("/api/keys/delete", { method: "DELETE", headers: await authHeaders(), body: JSON.stringify({ provider: p }) });
+      const resp = await fetch(`${basePath}/api/keys/delete`, { method: "DELETE", headers: await authHeaders(), body: JSON.stringify({ provider: p }) });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) { setMensagem(p, data.error || "Falha ao remover."); return; }
       setMensagem(p, "Chave removida.");

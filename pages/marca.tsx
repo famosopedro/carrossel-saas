@@ -293,7 +293,7 @@ export default function MarcaPage() {
     for (let i = 0; i < arquivos.length; i++) {
       setAnalisandoIdx(i);
       const arquivo = arquivos[i];
-      const apiUrl = "/api/analisar-marca";
+      const apiUrl = `${router.basePath}/api/analisar-marca`;
       try {
         const { base64, mimeType: mt } = await comprimirParaBase64(arquivo);
         const controller = new AbortController();

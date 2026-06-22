@@ -67,7 +67,7 @@ export default function Config() {
     setExcluindo(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const resp = await fetch("/api/delete-account", {
+      const resp = await fetch(`${router.basePath}/api/delete-account`, {
         method: "POST",
         headers: { Authorization: session?.access_token ? `Bearer ${session.access_token}` : "" },
       });
